@@ -68,7 +68,7 @@ app.post('/api/auth/register', async (req, res) => {
     const token = jwt.sign(
       { id: user.id, email: user.email },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRE }
+      { expiresIn: process.env.JWT_EXPIRE || '7d' }
     );
 
     res.status(201).json({
@@ -110,7 +110,7 @@ app.post('/api/auth/login', async (req, res) => {
     const token = jwt.sign(
       { id: user.id, email: user.email },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRE }
+      { expiresIn: process.env.JWT_EXPIRE || '7d' }
     );
 
     res.json({
