@@ -4,8 +4,8 @@
   "description": "Backend API for HealthHive application",
   "main": "server.js",
   "scripts": {
-    "start": "node server_sqlite.js",
-    "dev": "nodemon server_sqlite.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
