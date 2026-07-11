@@ -297,7 +297,7 @@ class ApiService {
 
   // ─── DOCUMENTS ─────────────────────────────────────────────────────────────
 
-  static Future<bool> uploadDocument({
+  static Future<Map<String, dynamic>> uploadDocument({
     required String name,
     required String type,
     String? category,
@@ -322,10 +322,15 @@ class ApiService {
         contentType: MediaType.parse(mimeType),
       ));
       final streamed = await request.send();
-      return streamed.statusCode == 201;
+      final response = await http.Response.fromStream(streamed);
+      if (kDebugMode) debugPrint('uploadDocument response: ${response.statusCode} ${response.body}');
+      if (streamed.statusCode == 201) {
+        return jsonDecode(response.body);
+      }
+      return {'success': false, 'message': 'Upload failed'};
     } catch (e) {
       if (kDebugMode) debugPrint('uploadDocument error: $e');
-      return false;
+      return {'success': false, 'message': e.toString()};
     }
   }
 

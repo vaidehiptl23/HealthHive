@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
 import '../utils/colors.dart';
 import '../widgets/bottom_nav.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 import 'doc_picker_stub.dart'
     if (dart.library.html) 'doc_picker_web.dart';
 
@@ -221,7 +223,7 @@ class _UploadNewDocsScreenState extends State<UploadNewDocsScreen> {
     }
 
     setState(() => _uploading = true);
-    final ok = await ApiService.uploadDocument(
+    final res = await ApiService.uploadDocument(
       name: documentNameController.text.trim(),
       type: selectedTab,
       category: finalCategory,
@@ -233,14 +235,134 @@ class _UploadNewDocsScreenState extends State<UploadNewDocsScreen> {
     );
     if (!mounted) return;
     setState(() => _uploading = false);
-    if (ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Document uploaded successfully"), backgroundColor: Colors.green),
-      );
-      Navigator.pop(context);
+    
+    if (res['success'] == true) {
+      final List<dynamic>? extracted = res['ai_extracted_medicines'];
+      if (extracted != null && extracted.isNotEmpty) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (dialogCtx) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.auto_awesome, color: Colors.amber),
+                SizedBox(width: 8),
+                Text("AI Reminders Found"),
+              ],
+            ),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  const Text("AI analyzed your prescription and detected the following medicines. Would you like to automatically schedule reminders for them?"),
+                  const SizedBox(height: 12),
+                  ...extracted.map((med) {
+                    final name = med['name'] ?? '';
+                    final dose = med['dose'] ?? '';
+                    final meal = med['meal'] ?? 'No Dependency';
+                    final List<String> times = [];
+                    if (med['morning'] == true) times.add("Morning");
+                    if (med['afternoon'] == true) times.add("Afternoon");
+                    if (med['night'] == true) times.add("Night");
+                    return ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.medication, color: Colors.orange),
+                      title: Text("$name ${dose.isNotEmpty ? '($dose)' : ''}"),
+                      subtitle: Text("${times.join(', ')} • $meal"),
+                    );
+                  }).toList(),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(dialogCtx);
+                  Navigator.pop(context);
+                },
+                child: const Text("No, Thanks"),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.pop(dialogCtx);
+                  setState(() => _uploading = true);
+
+                  for (var med in extracted) {
+                    final name = (med['name'] as String? ?? '').trim();
+                    if (name.isEmpty) continue;
+                    final dose = (med['dose'] as String? ?? '').trim();
+                    final meal = med['meal'] as String?;
+                    
+                    final morningTime = med['morning_time'] ?? '08:00';
+                    final afternoonTime = med['afternoon_time'] ?? '13:00';
+                    final nightTime = med['night_time'] ?? '20:00';
+
+                    TimeOfDay parseTime(String hhmm) {
+                      final parts = hhmm.split(':');
+                      return TimeOfDay(
+                        hour: int.tryParse(parts.first) ?? 8,
+                        minute: int.tryParse(parts.last) ?? 0,
+                      );
+                    }
+
+                    await ApiService.saveMedicineReminder(
+                      name: name,
+                      dose: dose.isNotEmpty ? dose : null,
+                      meal: meal,
+                      morning: med['morning'] == true,
+                      morningTime: morningTime,
+                      afternoon: med['afternoon'] == true,
+                      afternoonTime: afternoonTime,
+                      night: med['night'] == true,
+                      nightTime: nightTime,
+                      repeatDays: [],
+                    );
+
+                    Future<void> scheduleMed(TimeOfDay time, String periodLabel) async {
+                      final id = Random().nextInt(100000);
+                      await NotificationService.scheduleDailyNotification(
+                        id: id,
+                        title: "💊 Medicine Reminder",
+                        body: "Time for $name (${dose.isNotEmpty ? '$dose - ' : ''}$periodLabel)",
+                        time: time,
+                      );
+                    }
+
+                    if (med['morning'] == true) {
+                      await scheduleMed(parseTime(morningTime), "Morning");
+                    }
+                    if (med['afternoon'] == true) {
+                      await scheduleMed(parseTime(afternoonTime), "Afternoon");
+                    }
+                    if (med['night'] == true) {
+                      await scheduleMed(parseTime(nightTime), "Night");
+                    }
+                  }
+
+                  if (mounted) {
+                    setState(() => _uploading = false);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Document uploaded and AI reminders scheduled successfully!"), backgroundColor: Colors.green),
+                    );
+                    Navigator.pop(context);
+                  }
+                },
+                child: const Text("Schedule Reminders"),
+              ),
+            ],
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Document uploaded successfully"), backgroundColor: Colors.green),
+        );
+        Navigator.pop(context);
+      }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Upload failed. Try again."), backgroundColor: Colors.red),
+        SnackBar(content: Text(res['message'] ?? "Upload failed. Try again."), backgroundColor: Colors.red),
       );
     }
   }

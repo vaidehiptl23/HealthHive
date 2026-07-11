@@ -118,7 +118,60 @@ router.post('/upload', auth, async (req, res) => {
 
     const [row] = await pool.query('SELECT * FROM documents WHERE id = ?', [dbResult.insertId]);
     console.log('Upload success, Cloudinary URL:', result.secure_url);
-    res.status(201).json({ success: true, data: row[0] });
+
+    // Call Gemini API to extract medicines if it's a Prescription and key exists
+    let aiExtractedMedicines = [];
+    if (type === 'Prescription' && process.env.GEMINI_API_KEY) {
+      try {
+        console.log('🔮 Prescription detected, running Gemini AI Analysis...');
+        const geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [
+                    {
+                      text: "Analyze this medical prescription image or document and extract all medicines listed. Return ONLY a valid JSON array of objects representing each medicine. Do not wrap in markdown code blocks or add any other text. Return exactly a JSON array. Each object MUST have these keys: name (string, name of medicine), dose (string, e.g. '500mg' or '1 tab'), meal (string, one of 'After Meal', 'With Meal', 'Empty Stomach', 'No Dependency'), morning (boolean), afternoon (boolean), night (boolean), morning_time (string, format '08:00'), afternoon_time (string, format '13:00'), night_time (string, format '20:00')."
+                    },
+                    {
+                      inline_data: {
+                        mime_type: file.mimetype,
+                        data: buffer.toString('base64'),
+                      }
+                    }
+                  ]
+                }
+              ],
+              generationConfig: {
+                responseMimeType: "application/json"
+              }
+            })
+          }
+        );
+
+        if (geminiRes.ok) {
+          const geminiData = await geminiRes.json();
+          const jsonText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (jsonText) {
+            aiExtractedMedicines = JSON.parse(jsonText.trim());
+            console.log('✅ Gemini Extracted Medicines:', aiExtractedMedicines);
+          }
+        } else {
+          console.error('Gemini API Error:', geminiRes.status, await geminiRes.text());
+        }
+      } catch (e) {
+        console.error('Gemini parsing error:', e.message);
+      }
+    }
+
+    res.status(201).json({ 
+      success: true, 
+      data: row[0], 
+      ai_extracted_medicines: aiExtractedMedicines 
+    });
   } catch (err) {
     console.error('Upload document error:', JSON.stringify(err), err.message);
     res.status(500).json({ success: false, message: err.message || 'Server error' });
