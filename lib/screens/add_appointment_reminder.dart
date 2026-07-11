@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
 import '../utils/colors.dart';
 import '../models/reminder_data.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 import 'home_screen.dart';
 
 class AddAppointmentReminderScreen extends StatefulWidget {
@@ -19,6 +21,8 @@ class _AddAppointmentReminderScreenState
   final dateController = TextEditingController();
   final timeController = TextEditingController();
   final purposeController = TextEditingController();
+  DateTime? _selectedDate;
+  TimeOfDay? _selectedTime;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +56,7 @@ class _AddAppointmentReminderScreenState
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildField(placeController, "Place"),
-                    _buildField(dateController, "Date"),
+                    _buildDateField(dateController, "Date"),
                     _buildTimeField(timeController, "Time"),
                     _buildField(purposeController, "Purpose"),
                     const SizedBox(height: 10),
@@ -60,7 +64,7 @@ class _AddAppointmentReminderScreenState
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: () async {
-                          if (dateController.text.isNotEmpty) {
+                          if (_selectedDate != null) {
                             final purpose = purposeController.text.isEmpty
                                 ? "Doctor Appointment"
                                 : purposeController.text;
@@ -73,6 +77,22 @@ class _AddAppointmentReminderScreenState
                               date: dateController.text,
                               time: timeController.text.isNotEmpty ? timeController.text : null,
                               purpose: purposeController.text.isNotEmpty ? purposeController.text : null,
+                            );
+
+                            // Schedule local notification
+                            final scheduleTime = DateTime(
+                              _selectedDate!.year,
+                              _selectedDate!.month,
+                              _selectedDate!.day,
+                              _selectedTime?.hour ?? 9,
+                              _selectedTime?.minute ?? 0,
+                            );
+
+                            await NotificationService.scheduleNotification(
+                              id: Random().nextInt(100000),
+                              title: "📅 Appointment Reminder",
+                              body: "${purpose} at ${placeController.text.isNotEmpty ? placeController.text : 'clinic'}",
+                              scheduledDate: scheduleTime,
                             );
                           }
                           if (!mounted) return;
@@ -129,6 +149,35 @@ class _AddAppointmentReminderScreenState
     );
   }
 
+  Widget _buildDateField(TextEditingController controller, String hint) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: TextField(
+        controller: controller,
+        readOnly: true,
+        onTap: () async {
+          final DateTime? picked = await showDatePicker(
+            context: context,
+            initialDate: DateTime.now(),
+            firstDate: DateTime.now(),
+            lastDate: DateTime.now().add(const Duration(days: 365)),
+          );
+          if (picked != null && mounted) {
+            setState(() {
+              _selectedDate = picked;
+              controller.text = "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
+            });
+          }
+        },
+        decoration: InputDecoration(
+          hintText: hint,
+          border: const OutlineInputBorder(),
+          suffixIcon: const Icon(Icons.calendar_today),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTimeField(TextEditingController controller, String hint) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -142,6 +191,7 @@ class _AddAppointmentReminderScreenState
           );
           if (picked != null && mounted) {
             setState(() {
+              _selectedTime = picked;
               controller.text = picked.format(context);
             });
           }

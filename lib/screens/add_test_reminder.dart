@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
 import '../utils/colors.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 import '../models/reminder_data.dart';
 import 'home_screen.dart';
 
@@ -43,6 +45,16 @@ class _AddTestReminderScreenState extends State<AddTestReminderScreen> {
 
   Future<void> _save() async {
     setState(() => _saving = true);
+    const dayMapping = {
+      "Mon": DateTime.monday,
+      "Tue": DateTime.tuesday,
+      "Wed": DateTime.wednesday,
+      "Thu": DateTime.thursday,
+      "Fri": DateTime.friday,
+      "Sat": DateTime.saturday,
+      "Sun": DateTime.sunday,
+    };
+
     for (var test in tests) {
       final name = (test["name"] as TextEditingController).text.trim();
       if (name.isEmpty) continue;
@@ -51,6 +63,7 @@ class _AddTestReminderScreenState extends State<AddTestReminderScreen> {
       final afternoonTime = test["afternoonTime"] != null ? _fmt(test["afternoonTime"] as TimeOfDay) : null;
       final nightTime = test["nightTime"] != null ? _fmt(test["nightTime"] as TimeOfDay) : null;
       ReminderData.tests.add({"title": name, "subtitle": meal ?? "No Meal Dependency"});
+      
       await ApiService.saveTestReminder(
         name: name,
         meal: meal,
@@ -62,6 +75,47 @@ class _AddTestReminderScreenState extends State<AddTestReminderScreen> {
         nightTime: nightTime,
         repeatDays: List<String>.from(test["repeatDays"] as List),
       );
+
+      // Helper function to schedule local notifications
+      Future<void> scheduleTestNotification(TimeOfDay? time, String periodLabel) async {
+        if (time == null) return;
+        final id = Random().nextInt(100000);
+        final title = "🧪 Test Reminder";
+        final body = "It's time for your health test: $name ($periodLabel)";
+        
+        final days = List<String>.from(test["repeatDays"] as List);
+        if (days.isEmpty) {
+          await NotificationService.scheduleDailyNotification(
+            id: id,
+            title: title,
+            body: body,
+            time: time,
+          );
+        } else {
+          for (var day in days) {
+            final weekday = dayMapping[day];
+            if (weekday != null) {
+              await NotificationService.scheduleWeeklyNotification(
+                id: Random().nextInt(100000),
+                title: title,
+                body: body,
+                time: time,
+                weekday: weekday,
+              );
+            }
+          }
+        }
+      }
+
+      if (test["morning"] == true) {
+        await scheduleTestNotification(test["morningTime"] as TimeOfDay?, "Morning");
+      }
+      if (test["afternoon"] == true) {
+        await scheduleTestNotification(test["afternoonTime"] as TimeOfDay?, "Afternoon");
+      }
+      if (test["night"] == true) {
+        await scheduleTestNotification(test["nightTime"] as TimeOfDay?, "Night");
+      }
     }
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(

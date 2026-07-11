@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:math';
 import '../utils/colors.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 import '../models/reminder_data.dart';
 import 'home_screen.dart';
 
@@ -44,6 +46,16 @@ class _AddMedicineReminderScreenState extends State<AddMedicineReminderScreen> {
 
   Future<void> _save() async {
     setState(() => _saving = true);
+    const dayMapping = {
+      "Mon": DateTime.monday,
+      "Tue": DateTime.tuesday,
+      "Wed": DateTime.wednesday,
+      "Thu": DateTime.thursday,
+      "Fri": DateTime.friday,
+      "Sat": DateTime.saturday,
+      "Sun": DateTime.sunday,
+    };
+
     for (var med in medicines) {
       final name = (med["name"] as TextEditingController).text.trim();
       if (name.isEmpty) continue;
@@ -53,6 +65,7 @@ class _AddMedicineReminderScreenState extends State<AddMedicineReminderScreen> {
       final afternoonTime = med["afternoonTime"] != null ? _fmt(med["afternoonTime"] as TimeOfDay) : null;
       final nightTime = med["nightTime"] != null ? _fmt(med["nightTime"] as TimeOfDay) : null;
       ReminderData.medicines.add({"title": name, "subtitle": meal ?? "No Meal Dependency"});
+      
       await ApiService.saveMedicineReminder(
         name: name,
         dose: dose.isNotEmpty ? dose : null,
@@ -65,6 +78,47 @@ class _AddMedicineReminderScreenState extends State<AddMedicineReminderScreen> {
         nightTime: nightTime,
         repeatDays: List<String>.from(med["repeatDays"] as List),
       );
+
+      // Helper function to schedule local notifications
+      Future<void> scheduleMedNotification(TimeOfDay? time, String periodLabel) async {
+        if (time == null) return;
+        final id = Random().nextInt(100000);
+        final title = "💊 Medicine Reminder";
+        final body = "It's time for: $name (${dose.isNotEmpty ? '$dose - ' : ''}$periodLabel)";
+        
+        final days = List<String>.from(med["repeatDays"] as List);
+        if (days.isEmpty) {
+          await NotificationService.scheduleDailyNotification(
+            id: id,
+            title: title,
+            body: body,
+            time: time,
+          );
+        } else {
+          for (var day in days) {
+            final weekday = dayMapping[day];
+            if (weekday != null) {
+              await NotificationService.scheduleWeeklyNotification(
+                id: Random().nextInt(100000),
+                title: title,
+                body: body,
+                time: time,
+                weekday: weekday,
+              );
+            }
+          }
+        }
+      }
+
+      if (med["morning"] == true) {
+        await scheduleMedNotification(med["morningTime"] as TimeOfDay?, "Morning");
+      }
+      if (med["afternoon"] == true) {
+        await scheduleMedNotification(med["afternoonTime"] as TimeOfDay?, "Afternoon");
+      }
+      if (med["night"] == true) {
+        await scheduleMedNotification(med["nightTime"] as TimeOfDay?, "Night");
+      }
     }
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
