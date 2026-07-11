@@ -215,7 +215,15 @@ class _RecentlyUploadedDocsState extends State<RecentlyUploadedDocs> {
     final id = doc['id'] as int;
     final fileUrl = (doc['file_url'] as String?) ?? '';
 
-    return Container(
+    return GestureDetector(
+      onTap: () async {
+        if (fileUrl.isNotEmpty) {
+          if (await canLaunchUrl(Uri.parse(fileUrl))) {
+            await launchUrl(Uri.parse(fileUrl), mode: LaunchMode.externalApplication);
+          }
+        }
+      },
+      child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -265,7 +273,8 @@ class _RecentlyUploadedDocsState extends State<RecentlyUploadedDocs> {
             ),
           ],
         ),
-      );
+      ),
+    );
   }
 
   Widget _backButton() {
