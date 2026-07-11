@@ -112,11 +112,10 @@ class _UploadNewDocsScreenState extends State<UploadNewDocsScreen> {
                       ],
                       const SizedBox(height: 20),
                     ],
-                    Row(children: [
-                      Expanded(child: _btn("+ Add File", Icons.upload_file, _onAddFile)),
-                      const SizedBox(width: 12),
-                      Expanded(child: _btn("Camera", Icons.camera_alt_outlined, _onCamera)),
-                    ]),
+                    SizedBox(
+                      width: double.infinity,
+                      child: _btn("+ Add File", Icons.add_circle_outline, _onAddFile),
+                    ),
                     const SizedBox(height: 20),
                     if (_pickedFile != null)
                       Padding(
@@ -246,29 +245,54 @@ class _UploadNewDocsScreenState extends State<UploadNewDocsScreen> {
     }
   }
 
-  void _onCamera() {
-    _forWhomSheet((member) async {
-      setState(() => selectedUploadFor = member);
-      final picked = await pickCameraImage();
-      if (picked != null && mounted) {
-        setState(() {
-          _pickedFile = picked;
-          documentNameController.text = picked.name;
-        });
-      }
-    });
-  }
-
   void _onAddFile() {
-    _forWhomSheet((member) async {
+    _forWhomSheet((member) {
       setState(() => selectedUploadFor = member);
-      final picked = await pickDocumentFile();
-      if (picked != null && mounted) {
-        setState(() {
-          _pickedFile = picked;
-          documentNameController.text = picked.name;
-        });
-      }
+      
+      showModalBottomSheet(
+        context: context,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        backgroundColor: Colors.white,
+        builder: (_) => Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Select File Source", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: const Icon(Icons.folder_open, color: AppColors.primary),
+                title: const Text("Browse Files / Gallery"),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final picked = await pickDocumentFile();
+                  if (picked != null && mounted) {
+                    setState(() {
+                      _pickedFile = picked;
+                      documentNameController.text = picked.name;
+                    });
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_outlined, color: AppColors.primary),
+                title: const Text("Take Photo / Camera"),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final picked = await pickCameraImage();
+                  if (picked != null && mounted) {
+                    setState(() {
+                      _pickedFile = picked;
+                      documentNameController.text = picked.name;
+                    });
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      );
     });
   }
 
