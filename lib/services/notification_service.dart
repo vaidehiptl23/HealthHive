@@ -145,7 +145,7 @@ class NotificationService {
       body,
       scheduledDate,
       platformDetails,
-      matchDateTimeComponents: MatchDateTimeComponents.time,
+      matchDateTimeComponents: DateTimeComponents.time,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
@@ -215,7 +215,7 @@ class NotificationService {
       body,
       scheduledDate,
       platformDetails,
-      matchDateTimeComponents: MatchDateTimeComponents.dayOfWeekAndTime,
+      matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
