@@ -41,13 +41,38 @@ class NotificationService {
       },
     );
 
-    // 5. Request Android 13+ Notification Permissions
+    // 5. Request and Register Android Channels explicitly with MAX importance
     final androidImplementation = _notificationsPlugin
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
     if (androidImplementation != null) {
       await androidImplementation.requestNotificationsPermission();
       await androidImplementation.requestExactAlarmsPermission();
+
+      // Create Reminder Channel with Max Importance (Heads-up pop up)
+      const AndroidNotificationChannel remindersChannel = AndroidNotificationChannel(
+        'healthhive_reminders_channel_v3',
+        'HealthHive Reminders',
+        description: 'Notifications for appointments and health reminders',
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        showBadge: true,
+      );
+
+      // Create Medicine Channel with Max Importance (Heads-up pop up)
+      const AndroidNotificationChannel medicineChannel = AndroidNotificationChannel(
+        'healthhive_medicine_channel_v3',
+        'HealthHive Medicine Reminders',
+        description: 'Notifications for medicine intake',
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+        showBadge: true,
+      );
+
+      await androidImplementation.createNotificationChannel(remindersChannel);
+      await androidImplementation.createNotificationChannel(medicineChannel);
     }
   }
 
@@ -60,18 +85,19 @@ class NotificationService {
   }) async {
     final tz.TZDateTime tzScheduledDate = tz.TZDateTime.from(scheduledDate, tz.local);
     
-    // Ensure scheduled date is in the future
     if (tzScheduledDate.isBefore(tz.TZDateTime.now(tz.local))) {
       return;
     }
 
     const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'healthhive_reminders_channel',
+      'healthhive_reminders_channel_v3',
       'HealthHive Reminders',
       channelDescription: 'Notifications for appointments and health reminders',
       importance: Importance.max,
-      priority: Priority.high,
+      priority: Priority.max,
       playSound: true,
+      enableVibration: true,
+      ticker: 'ticker',
     );
 
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
@@ -85,16 +111,30 @@ class NotificationService {
       iOS: iosDetails,
     );
 
-    await _notificationsPlugin.zonedSchedule(
-      id,
-      title,
-      body,
-      tzScheduledDate,
-      platformDetails,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-    );
+    try {
+      await _notificationsPlugin.zonedSchedule(
+        id,
+        title,
+        body,
+        tzScheduledDate,
+        platformDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+    } catch (e) {
+      debugPrint('Exact alarm failed, falling back to inexact: $e');
+      await _notificationsPlugin.zonedSchedule(
+        id,
+        title,
+        body,
+        tzScheduledDate,
+        platformDetails,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+    }
   }
 
   // Schedule a recurring daily notification
@@ -114,18 +154,19 @@ class NotificationService {
       time.minute,
     );
 
-    // If scheduled time is in the past, move it to tomorrow
     if (scheduledDate.isBefore(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
 
     const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'healthhive_medicine_channel',
+      'healthhive_medicine_channel_v3',
       'HealthHive Medicine Reminders',
       channelDescription: 'Notifications for medicine intake',
       importance: Importance.max,
-      priority: Priority.high,
+      priority: Priority.max,
       playSound: true,
+      enableVibration: true,
+      ticker: 'ticker',
     );
 
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
@@ -139,17 +180,32 @@ class NotificationService {
       iOS: iosDetails,
     );
 
-    await _notificationsPlugin.zonedSchedule(
-      id,
-      title,
-      body,
-      scheduledDate,
-      platformDetails,
-      matchDateTimeComponents: DateTimeComponents.time,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-    );
+    try {
+      await _notificationsPlugin.zonedSchedule(
+        id,
+        title,
+        body,
+        scheduledDate,
+        platformDetails,
+        matchDateTimeComponents: DateTimeComponents.time,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+    } catch (e) {
+      debugPrint('Exact alarm failed, falling back to inexact: $e');
+      await _notificationsPlugin.zonedSchedule(
+        id,
+        title,
+        body,
+        scheduledDate,
+        platformDetails,
+        matchDateTimeComponents: DateTimeComponents.time,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+    }
   }
 
   // Schedule a recurring weekly notification
@@ -190,12 +246,14 @@ class NotificationService {
     );
 
     const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'healthhive_medicine_channel',
+      'healthhive_medicine_channel_v3',
       'HealthHive Medicine Reminders',
       channelDescription: 'Notifications for medicine intake',
       importance: Importance.max,
-      priority: Priority.high,
+      priority: Priority.max,
       playSound: true,
+      enableVibration: true,
+      ticker: 'ticker',
     );
 
     const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
@@ -209,17 +267,32 @@ class NotificationService {
       iOS: iosDetails,
     );
 
-    await _notificationsPlugin.zonedSchedule(
-      id,
-      title,
-      body,
-      scheduledDate,
-      platformDetails,
-      matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-    );
+    try {
+      await _notificationsPlugin.zonedSchedule(
+        id,
+        title,
+        body,
+        scheduledDate,
+        platformDetails,
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+    } catch (e) {
+      debugPrint('Exact alarm failed, falling back to inexact: $e');
+      await _notificationsPlugin.zonedSchedule(
+        id,
+        title,
+        body,
+        scheduledDate,
+        platformDetails,
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+    }
   }
 
   // Cancel a notification
