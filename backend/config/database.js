@@ -115,6 +115,63 @@ async function createTables() {
     `);
     console.log('✅ Family members table created/verified');
 
+    // Migrate old family_members table if needed
+    try {
+      await pool.query("ALTER TABLE family_members ADD COLUMN first_name VARCHAR(100)");
+      await pool.query("UPDATE family_members SET first_name = name WHERE first_name IS NULL OR first_name = ''");
+    } catch (e) {
+      if (e.code !== 'ER_DUP_FIELDNAME') console.error('Error migrating first_name:', e.message);
+    }
+    
+    try {
+      await pool.query("ALTER TABLE family_members ADD COLUMN middle_name VARCHAR(100)");
+    } catch (e) {
+      if (e.code !== 'ER_DUP_FIELDNAME') console.error('Error migrating middle_name:', e.message);
+    }
+    
+    try {
+      await pool.query("ALTER TABLE family_members ADD COLUMN last_name VARCHAR(100)");
+    } catch (e) {
+      if (e.code !== 'ER_DUP_FIELDNAME') console.error('Error migrating last_name:', e.message);
+    }
+    
+    try {
+      await pool.query("ALTER TABLE family_members ADD COLUMN blood_group VARCHAR(10)");
+    } catch (e) {
+      if (e.code !== 'ER_DUP_FIELDNAME') console.error('Error migrating blood_group:', e.message);
+    }
+    
+    try {
+      await pool.query("ALTER TABLE family_members ADD COLUMN gender VARCHAR(20)");
+    } catch (e) {
+      if (e.code !== 'ER_DUP_FIELDNAME') console.error('Error migrating gender:', e.message);
+    }
+    
+    try {
+      await pool.query("ALTER TABLE family_members ADD COLUMN dob VARCHAR(50)");
+      await pool.query("UPDATE family_members SET dob = CAST(date_of_birth AS CHAR) WHERE date_of_birth IS NOT NULL");
+    } catch (e) {
+      if (e.code !== 'ER_DUP_FIELDNAME') console.error('Error migrating dob:', e.message);
+    }
+    
+    try {
+      await pool.query("ALTER TABLE family_members ADD COLUMN height VARCHAR(20)");
+    } catch (e) {
+      if (e.code !== 'ER_DUP_FIELDNAME') console.error('Error migrating height:', e.message);
+    }
+    
+    try {
+      await pool.query("ALTER TABLE family_members ADD COLUMN weight VARCHAR(20)");
+    } catch (e) {
+      if (e.code !== 'ER_DUP_FIELDNAME') console.error('Error migrating weight:', e.message);
+    }
+    
+    try {
+      await pool.query("ALTER TABLE family_members ADD COLUMN address TEXT");
+    } catch (e) {
+      if (e.code !== 'ER_DUP_FIELDNAME') console.error('Error migrating address:', e.message);
+    }
+
     // Add emergency detail fields to family members
     try {
       await pool.query("ALTER TABLE family_members ADD COLUMN emergency_contact_name VARCHAR(100), ADD COLUMN emergency_contact_phone VARCHAR(20), ADD COLUMN emergency_blood_group VARCHAR(10), ADD COLUMN allergies TEXT, ADD COLUMN existing_conditions TEXT");
