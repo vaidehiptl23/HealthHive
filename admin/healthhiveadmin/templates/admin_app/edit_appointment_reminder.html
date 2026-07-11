@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit Appointment Reminder - HealthHive Admin{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="main-layout">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-avatar">
+                    <i class="fas fa-user-shield" style="font-size: 32px;"></i>
+                </div>
+                <h3 class="sidebar-title">Admin Panel</h3>
+                <p style="opacity: 0.8; font-size: 14px; margin: 8px 0 0 0;">{{ user.username }}</p>
+            </div>
+
+            <ul class="sidebar-menu">
+                <li>
+                    <a href="{% url 'dashboard' %}">
+                        <i class="fas fa-tachometer-alt"></i>
+                        Dashboard
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'users' %}">
+                        <i class="fas fa-users"></i>
+                        Manage Users
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'reminders' %}" class="active">
+                        <i class="fas fa-bell"></i>
+                        Manage Reminders
+                    </a>
+                </li>
+            </ul>
+
+            <a href="{% url 'logout' %}" class="btn btn-secondary" style="width: 100%;">
+                <i class="fas fa-sign-out-alt"></i>
+                Logout
+            </a>
+        </div>
+
+        <!-- Main Content -->
+        <div>
+            <div class="header">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <a href="{% url 'reminders' %}" style="color: #667eea; text-decoration: none; padding: 12px; border-radius: 12px; background: rgba(102, 126, 234, 0.1); transition: all 0.3s ease;">
+                        <i class="fas fa-arrow-left" style="font-size: 18px;"></i>
+                    </a>
+                    <h1>
+                        <i class="fas fa-edit" style="color: #667eea;"></i>
+                        Edit Appointment Reminder
+                    </h1>
+                </div>
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <span style="background: var(--success-gradient); color: var(--text-primary); padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 500;">
+                        {{ reminder.user.username }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Edit Appointment Reminder Form -->
+            <div class="card">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+                        <!-- User Selection -->
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-user" style="margin-right: 8px;"></i>
+                                Select User
+                            </label>
+                            {{ form.user }}
+                            {% if form.user.errors %}
+                                <div style="color: #d63031; font-size: 14px; margin-top: 8px;">
+                                    {{ form.user.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Appointment Date -->
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-calendar" style="margin-right: 8px;"></i>
+                                Appointment Date
+                            </label>
+                            {{ form.appointment_date }}
+                            {% if form.appointment_date.errors %}
+                                <div style="color: #d63031; font-size: 14px; margin-top: 8px;">
+                                    {{ form.appointment_date.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Appointment Time -->
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-clock" style="margin-right: 8px;"></i>
+                                Appointment Time
+                            </label>
+                            {{ form.appointment_time }}
+                            {% if form.appointment_time.errors %}
+                                <div style="color: #d63031; font-size: 14px; margin-top: 8px;">
+                                    {{ form.appointment_time.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Place -->
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-map-marker-alt" style="margin-right: 8px;"></i>
+                                Place/Hospital
+                            </label>
+                            {{ form.place }}
+                            {% if form.place.errors %}
+                                <div style="color: #d63031; font-size: 14px; margin-top: 8px;">
+                                    {{ form.place.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Purpose -->
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-clipboard" style="margin-right: 8px;"></i>
+                                Purpose
+                            </label>
+                            {{ form.purpose }}
+                            {% if form.purpose.errors %}
+                                <div style="color: #d63031; font-size: 14px; margin-top: 8px;">
+                                    {{ form.purpose.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Doctor Name -->
+                        <div class="form-group">
+                            <label class="form-label">
+                                <i class="fas fa-user-md" style="margin-right: 8px;"></i>
+                                Doctor Name (Optional)
+                            </label>
+                            {{ form.doctor_name }}
+                            {% if form.doctor_name.errors %}
+                                <div style="color: #d63031; font-size: 14px; margin-top: 8px;">
+                                    {{ form.doctor_name.errors.0 }}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div style="margin-top: 32px; display: flex; gap: 16px; justify-content: center;">
+                        <a href="{% url 'reminders' %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i>
+                            Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i>
+                            Update Appointment Reminder
+                        </button>
+                        <a href="{% url 'delete_appointment_reminder' reminder.id %}" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this reminder?')">
+                            <i class="fas fa-trash"></i>
+                            Delete
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    animation: fadeInUp 0.6s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>
+{% endblock %}

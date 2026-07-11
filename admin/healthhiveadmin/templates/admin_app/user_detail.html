@@ -1,0 +1,288 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ user.username }} - HealthHive Admin{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="main-layout">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-avatar">
+                    <i class="fas fa-user-shield" style="font-size: 32px;"></i>
+                </div>
+                <h3 class="sidebar-title">Admin Panel</h3>
+                <p style="opacity: 0.8; font-size: 14px; margin: 8px 0 0 0;">{{ request.user.username }}</p>
+            </div>
+
+            <ul class="sidebar-menu">
+                <li>
+                    <a href="{% url 'dashboard' %}">
+                        <i class="fas fa-tachometer-alt"></i>
+                        Dashboard
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'users' %}" class="active">
+                        <i class="fas fa-users"></i>
+                        Manage Users
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'reminders' %}">
+                        <i class="fas fa-bell"></i>
+                        Manage Reminders
+                    </a>
+                </li>
+            </ul>
+
+            <a href="{% url 'logout' %}" class="btn btn-secondary" style="width: 100%;">
+                <i class="fas fa-sign-out-alt"></i>
+                Logout
+            </a>
+        </div>
+
+        <!-- Main Content -->
+        <div>
+            <div class="header">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <a href="{% url 'users' %}" style="color: #667eea; text-decoration: none; padding: 12px; border-radius: 12px; background: rgba(102, 126, 234, 0.1); transition: all 0.3s ease;">
+                        <i class="fas fa-arrow-left" style="font-size: 18px;"></i>
+                    </a>
+                    <h1>
+                        <i class="fas fa-user" style="color: #667eea;"></i>
+                        {{ user.name }}
+                    </h1>
+                </div>
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <span style="background: var(--primary-gradient); color: white; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 500;">
+                        <i class="fas fa-calendar"></i>
+                        Joined {{ user.created_at|date:"M d, Y" }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Subscription Badge -->
+            <div class="card" style="margin-bottom: 24px; display: flex; align-items: center; gap: 16px; padding: 20px;">
+                <i class="fas fa-crown" style="font-size: 28px; color: {% if subscription_plan != 'free' %}#f6ad55{% else %}#a0aec0{% endif %};"></i>
+                <div>
+                    <h3 style="margin: 0; font-size: 18px; color: var(--text-primary);">Subscription Plan</h3>
+                    <span style="
+                        display: inline-block; margin-top: 6px; padding: 6px 18px; border-radius: 20px; font-weight: 600; font-size: 14px; text-transform: uppercase;
+                        {% if subscription_plan == 'free' %}
+                            background: #edf2f7; color: #718096;
+                        {% elif subscription_plan == 'premium' %}
+                            background: linear-gradient(135deg, #f6ad55, #ed8936); color: #fff;
+                        {% else %}
+                            background: linear-gradient(135deg, #667eea, #764ba2); color: #fff;
+                        {% endif %}
+                    ">
+                        <i class="fas {% if subscription_plan == 'free' %}fa-user{% else %}fa-gem{% endif %}"></i>
+                        {{ subscription_plan }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- User Profile Cards -->
+            <div class="user-grid">
+                <!-- Primary User Card -->
+                <div class="user-card" style="background: var(--success-gradient); color: var(--text-primary);">
+                    <div class="user-card-header">
+                        <h3><i class="fas fa-user-circle"></i> Primary User</h3>
+                    </div>
+
+                    <div class="user-info">
+                        <div><strong>Name:</strong> {{ user.name }}</div>
+                        <div><strong>Email:</strong> {{ user.email }}</div>
+                        <div><strong>Phone:</strong> {{ user.phone|default:"Not set" }}</div>
+                        <div><strong>Blood Group:</strong> {{ user.emergency_blood_group|default:"Not set" }}</div>
+                        <div><strong>Documents Uploaded:</strong> {{ document_count }}</div>
+                        <div><strong>Joined:</strong> {{ user.created_at|date:"M d, Y" }}</div>
+                    </div>
+                </div>
+
+                <!-- Family Member Cards -->
+                {% for member in family_members %}
+                <div class="user-card">
+                    <div class="user-card-header">
+                        <h3><i class="fas fa-user-friends"></i> Family Member {{ forloop.counter }}</h3>
+                    </div>
+
+                    <div class="user-info">
+                        <div><strong>Name:</strong> {{ member.first_name }} {{ member.last_name }}</div>
+                        <div><strong>Email:</strong> {{ member.email|default:"Not set" }}</div>
+                        <div><strong>Phone:</strong> {{ member.phone|default:"Not set" }}</div>
+                        <div><strong>Blood Group:</strong> {{ member.blood_group|default:"Not set" }}</div>
+                        <div><strong>Gender:</strong> {{ member.gender|default:"Not set" }}</div>
+                        <div><strong>DOB:</strong> {{ member.dob|default:"Not set" }}</div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="user-card" style="opacity: 0.6;">
+                    <div class="user-card-header">
+                        <h3><i class="fas fa-user-friends"></i> Family Members</h3>
+                    </div>
+                    <div class="user-info">
+                        <div style="text-align: center; padding: 20px;">
+                            <i class="fas fa-users" style="font-size: 32px; color: #a0aec0; margin-bottom: 8px;"></i>
+                            <p style="color: #718096;">No family members added yet.</p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- User's Reminders Section -->
+            <div class="card" style="margin-top: 32px;">
+                <h2 style="color: var(--text-primary); font-size: 24px; font-weight: 600; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
+                    <i class="fas fa-bell" style="color: #667eea;"></i>
+                    User's Reminders
+                </h2>
+
+                {% if medicine_reminders or appointment_reminders or test_reminders %}
+                    <div class="reminder-grid">
+                        <!-- Medicine Reminders -->
+                        {% for reminder in medicine_reminders %}
+                        <div class="reminder-card">
+                            <div style="display: flex; justify-content: between; align-items: flex-start; margin-bottom: 16px;">
+                                <h4 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                                    <i class="fas fa-pills"></i>
+                                    {{ reminder.medicine_name }}
+                                </h4>
+                                <span style="background: rgba(139, 69, 19, 0.2); color: #8b4513; padding: 4px 8px; border-radius: 12px; font-size: 12px;">
+                                    Medicine
+                                </span>
+                            </div>
+                            
+                            <div style="font-size: 14px; line-height: 1.6;">
+                                <div><strong>Dose:</strong> {{ reminder.dose|default:"N/A" }}</div>
+                                <div><strong>Meal:</strong> {{ reminder.meal|default:"N/A" }}</div>
+                                <div><strong>Morning:</strong> {% if reminder.morning %}Yes{% else %}No{% endif %}</div>
+                                <div><strong>Afternoon:</strong> {% if reminder.afternoon %}Yes{% else %}No{% endif %}</div>
+                                <div><strong>Created:</strong> {{ reminder.created_at|date:"M d, Y" }}</div>
+                            </div>
+
+                            <div style="margin-top: 16px;">
+                                {% if not reminder.is_sent %}
+                                <a href="{% url 'send_medicine_reminder' reminder.id %}" class="btn btn-success" style="width: 100%; font-size: 14px;">
+                                    <i class="fas fa-paper-plane"></i>
+                                    Send Reminder
+                                </a>
+                                {% else %}
+                                <button class="btn" style="width: 100%; background: #e2e8f0; color: #718096; cursor: not-allowed;" disabled>
+                                    <i class="fas fa-check"></i>
+                                    Sent
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        <!-- Appointment Reminders -->
+                        {% for reminder in appointment_reminders %}
+                        <div class="reminder-card appointment">
+                            <div style="display: flex; justify-content: between; align-items: flex-start; margin-bottom: 16px;">
+                                <h4 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                                    <i class="fas fa-calendar-check"></i>
+                                    Appointment
+                                </h4>
+                                <span style="background: rgba(45, 90, 39, 0.2); color: #2d5a27; padding: 4px 8px; border-radius: 12px; font-size: 12px;">
+                                    Appointment
+                                </span>
+                            </div>
+                            
+                            <div style="font-size: 14px; line-height: 1.6;">
+                                <div><strong>Date:</strong> {{ reminder.appointment_date }}</div>
+                                <div><strong>Time:</strong> {{ reminder.appointment_time }}</div>
+                                <div><strong>Place:</strong> {{ reminder.place }}</div>
+                                <div><strong>Purpose:</strong> {{ reminder.purpose }}</div>
+                            </div>
+
+                            <div style="margin-top: 16px;">
+                                {% if not reminder.is_sent %}
+                                <a href="{% url 'send_appointment_reminder' reminder.id %}" class="btn btn-success" style="width: 100%; font-size: 14px;">
+                                    <i class="fas fa-paper-plane"></i>
+                                    Send Reminder
+                                </a>
+                                {% else %}
+                                <button class="btn" style="width: 100%; background: #e2e8f0; color: #718096; cursor: not-allowed;" disabled>
+                                    <i class="fas fa-check"></i>
+                                    Sent
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        <!-- Test Reminders -->
+                        {% for reminder in test_reminders %}
+                        <div class="reminder-card" style="background: linear-gradient(135deg, rgba(100, 181, 246, 0.15), rgba(100, 181, 246, 0.05)); border: 1px solid rgba(100, 181, 246, 0.3);">
+                            <div style="display: flex; justify-content: between; align-items: flex-start; margin-bottom: 16px;">
+                                <h4 style="margin: 0; display: flex; align-items: center; gap: 8px; color: #1565c0;">
+                                    <i class="fas fa-vial"></i>
+                                    {{ reminder.test_name }}
+                                </h4>
+                                <span style="background: rgba(21, 101, 192, 0.2); color: #1565c0; padding: 4px 8px; border-radius: 12px; font-size: 12px;">
+                                    Test
+                                </span>
+                            </div>
+                            
+                            <div style="font-size: 14px; line-height: 1.6;">
+                                <div><strong>Meal:</strong> {{ reminder.meal|default:"N/A" }}</div>
+                                <div><strong>Morning:</strong> {% if reminder.morning %}Yes{% else %}No{% endif %}</div>
+                                <div><strong>Afternoon:</strong> {% if reminder.afternoon %}Yes{% else %}No{% endif %}</div>
+                                <div><strong>Night:</strong> {% if reminder.night %}Yes{% else %}No{% endif %}</div>
+                                <div><strong>Created:</strong> {{ reminder.created_at|date:"M d, Y" }}</div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-bell-slash"></i>
+                        <h3>No Reminders</h3>
+                        <p>This user doesn't have any reminders set up yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="margin-top: 32px; display: flex; gap: 16px; justify-content: center;">
+                <a href="{% url 'users' %}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i>
+                    Back to Users
+                </a>
+                <a href="{% url 'reminders' %}" class="btn btn-success">
+                    <i class="fas fa-bell"></i>
+                    View All Reminders
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.user-card,
+.reminder-card {
+    animation: fadeInUp 0.6s ease;
+    animation-fill-mode: both;
+}
+
+.user-card:nth-child(1) { animation-delay: 0.1s; }
+.user-card:nth-child(2) { animation-delay: 0.2s; }
+
+.reminder-card:nth-child(odd) { animation-delay: 0.3s; }
+.reminder-card:nth-child(even) { animation-delay: 0.4s; }
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>
+{% endblock %}

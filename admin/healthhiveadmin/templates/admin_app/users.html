@@ -1,0 +1,202 @@
+{% extends 'base.html' %}
+
+{% block title %}Users - HealthHive Admin{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="main-layout">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-avatar">
+                    <i class="fas fa-user-shield" style="font-size: 32px;"></i>
+                </div>
+                <h3 class="sidebar-title">Admin Panel</h3>
+                <p style="opacity: 0.8; font-size: 14px; margin: 8px 0 0 0;">{{ user.username }}</p>
+            </div>
+
+            <ul class="sidebar-menu">
+                <li>
+                    <a href="{% url 'dashboard' %}">
+                        <i class="fas fa-tachometer-alt"></i>
+                        Dashboard
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'users' %}" class="active">
+                        <i class="fas fa-users"></i>
+                        Manage Users
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'reminders' %}">
+                        <i class="fas fa-bell"></i>
+                        Manage Reminders
+                    </a>
+                </li>
+            </ul>
+
+            <a href="{% url 'logout' %}" class="btn btn-secondary" style="width: 100%;">
+                <i class="fas fa-sign-out-alt"></i>
+                Logout
+            </a>
+        </div>
+
+        <!-- Main Content -->
+        <div>
+            <div class="header">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <a href="{% url 'dashboard' %}" style="color: #667eea; text-decoration: none; padding: 12px; border-radius: 12px; background: rgba(102, 126, 234, 0.1); transition: all 0.3s ease;">
+                        <i class="fas fa-arrow-left" style="font-size: 18px;"></i>
+                    </a>
+                    <h1>
+                        <i class="fas fa-users" style="color: #667eea;"></i>
+                        User Management
+                    </h1>
+                </div>
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <span style="background: var(--success-gradient); color: #2d5a27; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 500;">
+                        {{ users.count }} Users
+                    </span>
+                </div>
+            </div>
+
+            <!-- Users Grid -->
+            {% if users %}
+                <div class="user-grid">
+                    {% for user in users %}
+                    <div class="user-card">
+                        <div class="user-card-header">
+                            <h3>User {{ forloop.counter }}</h3>
+                            <div class="user-actions">
+                                <a href="{% url 'user_detail' user.id %}" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if not user.is_active %}
+                                <span style="background: #d63031; color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                                    <i class="fas fa-ban"></i> BLOCKED
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="user-info">
+                            <div>
+                                <strong>Name:</strong> 
+                                {{ user.name }}
+                            </div>
+                            <div>
+                                <strong>Email:</strong> 
+                                {{ user.email }}
+                            </div>
+                            <div>
+                                <strong>Phone:</strong> 
+                                {{ user.phone|default:"Not set" }}
+                            </div>
+                            <div>
+                                <strong>Documents:</strong> 
+                                {{ user.document_count }}
+                            </div>
+                            <div>
+                                <strong>Joined:</strong> 
+                                {{ user.created_at|date:"M d, Y" }}
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 20px; display: flex; gap: 12px;">
+                            <a href="{% url 'user_detail' user.id %}" class="btn btn-primary" style="flex: 1; font-size: 14px; padding: 12px;">
+                                <i class="fas fa-eye"></i>
+                                View Details
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="card">
+                    <div class="empty-state">
+                        <i class="fas fa-users"></i>
+                        <h3>No Users Found</h3>
+                        <p>There are no users registered in the system yet.</p>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function sendNotification(userId) {
+    const button = event.target;
+    const originalContent = button.innerHTML;
+    
+    button.innerHTML = '<div class="loading"></div>';
+    button.disabled = true;
+    
+    setTimeout(() => {
+        button.innerHTML = '<i class="fas fa-check"></i>';
+        button.style.background = 'var(--success-gradient)';
+        button.style.color = '#2d5a27';
+        
+        // Show success message
+        showMessage('Notification sent successfully!', 'success');
+        
+        setTimeout(() => {
+            button.innerHTML = originalContent;
+            button.disabled = false;
+            button.style.background = '';
+            button.style.color = '';
+        }, 2000);
+    }, 1500);
+}
+
+function showSampleAlert() {
+    showMessage('This is a sample user. Create real users to see actual data.', 'info');
+}
+
+function showMessage(message, type) {
+    const messagesContainer = document.querySelector('.messages') || createMessagesContainer();
+    
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type}`;
+    alert.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'info-circle'}"></i>
+        ${message}
+    `;
+    
+    messagesContainer.appendChild(alert);
+    
+    setTimeout(() => {
+        alert.remove();
+    }, 3000);
+}
+
+function createMessagesContainer() {
+    const container = document.createElement('div');
+    container.className = 'messages';
+    document.body.appendChild(container);
+    return container;
+}
+</script>
+
+<style>
+.user-card {
+    animation: fadeInUp 0.6s ease;
+    animation-fill-mode: both;
+}
+
+.user-card:nth-child(odd) { animation-delay: 0.1s; }
+.user-card:nth-child(even) { animation-delay: 0.2s; }
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>
+{% endblock %}

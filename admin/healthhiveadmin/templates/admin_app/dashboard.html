@@ -1,0 +1,825 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - HealthHive Admin{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="main-layout">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-avatar">
+                    <i class="fas fa-user-shield" style="font-size: 32px;"></i>
+                </div>
+                <h3 class="sidebar-title">Admin Panel</h3>
+                <p style="opacity: 0.8; font-size: 14px; margin: 8px 0 0 0;">{{ user.username }}</p>
+            </div>
+
+            <ul class="sidebar-menu">
+                <li>
+                    <a href="{% url 'dashboard' %}" class="active">
+                        <i class="fas fa-tachometer-alt"></i>
+                        Dashboard
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'users' %}">
+                        <i class="fas fa-users"></i>
+                        Manage Users
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'reminders' %}">
+                        <i class="fas fa-bell"></i>
+                        Manage Reminders
+                    </a>
+                </li>
+            </ul>
+
+            <a href="{% url 'logout' %}" class="btn btn-secondary" style="width: 100%;">
+                <i class="fas fa-sign-out-alt"></i>
+                Logout
+            </a>
+        </div>
+
+        <!-- Main Content -->
+        <div>
+            <div class="header">
+                <h1>
+                    <i class="fas fa-tachometer-alt" style="color: #667eea;"></i>
+                    Dashboard
+                </h1>
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div style="padding: 12px; background: var(--success-gradient); border-radius: 50%; color: #2d5a27;">
+                        <i class="fas fa-heartbeat" style="font-size: 20px;"></i>
+                    </div>
+                    <span style="color: var(--text-muted); font-size: 14px;">System Online</span>
+                </div>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">{{ total_users }}</div>
+                    <div class="stat-label">
+                        <i class="fas fa-users"></i>
+                        Total Users
+                    </div>
+                </div>
+                
+                <div class="stat-card" style="background: var(--secondary-gradient); color: #8b4513;">
+                    <div class="stat-number">{{ total_medicine_reminders }}</div>
+                    <div class="stat-label">
+                        <i class="fas fa-pills"></i>
+                        Medicine Reminders
+                    </div>
+                </div>
+                
+                <div class="stat-card" style="background: var(--success-gradient); color: var(--text-primary);">
+                    <div class="stat-number">{{ total_appointment_reminders }}</div>
+                    <div class="stat-label">
+                        <i class="fas fa-calendar-check"></i>
+                        Appointment Reminders
+                    </div>
+                </div>
+                
+                <div class="stat-card" style="background: linear-gradient(135deg, #e3f2fd, #bbdefb); color: #1565c0;">
+                    <div class="stat-number">{{ total_test_reminders }}</div>
+                    <div class="stat-label">
+                        <i class="fas fa-vial"></i>
+                        Test Reminders
+                    </div>
+                </div>
+                
+                <div class="stat-card" style="background: var(--primary-gradient); color: white;">
+                    <div class="stat-number">{{ sent_today_total }}</div>
+                    <div class="stat-label">
+                        <i class="fas fa-paper-plane"></i>
+                        Sent Today
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Analytics Section -->
+            <div class="card">
+                <h2 style="color: var(--text-primary); font-size: 24px; font-weight: 600; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
+                    <i class="fas fa-chart-line" style="color: #667eea;"></i>
+                    Data Analytics
+                </h2>
+                
+                <!-- Analytics Grid -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 32px;">
+                    <!-- User Activity Chart -->
+                    <div style="background: rgba(102, 126, 234, 0.05); border-radius: 16px; padding: 24px;">
+                        <h3 style="color: var(--text-primary); font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-user-clock" style="color: #667eea;"></i>
+                            User Activity
+                        </h3>
+                        <canvas id="userActivityChart" style="max-height: 200px;"></canvas>
+                    </div>
+                    
+                    <!-- Reminder Distribution Chart -->
+                    <div style="background: rgba(255, 183, 77, 0.05); border-radius: 16px; padding: 24px;">
+                        <h3 style="color: var(--text-primary); font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-chart-pie" style="color: #ffb74d;"></i>
+                            Reminder Distribution
+                        </h3>
+                        <canvas id="reminderDistChart" style="max-height: 200px;"></canvas>
+                    </div>
+                    
+                    <!-- Gender Distribution Chart -->
+                    <div style="background: rgba(244, 143, 177, 0.05); border-radius: 16px; padding: 24px;">
+                        <h3 style="color: var(--text-primary); font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-venus-mars" style="color: #f48fb1;"></i>
+                            Gender Distribution
+                        </h3>
+                        <canvas id="genderChart" style="max-height: 200px;"></canvas>
+                    </div>
+                    
+                    <!-- Age Distribution Chart -->
+                    <div style="background: rgba(129, 199, 132, 0.05); border-radius: 16px; padding: 24px;">
+                        <h3 style="color: var(--text-primary); font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-birthday-cake" style="color: #81c784;"></i>
+                            Age Distribution
+                        </h3>
+                        <canvas id="ageChart" style="max-height: 200px;"></canvas>
+                    </div>
+                    
+                    <!-- Blood Group Distribution Chart -->
+                    <div style="background: rgba(229, 115, 115, 0.05); border-radius: 16px; padding: 24px;">
+                        <h3 style="color: var(--text-primary); font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-tint" style="color: #e57373;"></i>
+                            Blood Group Distribution
+                        </h3>
+                        <canvas id="bloodGroupChart" style="max-height: 200px;"></canvas>
+                    </div>
+                    
+                    <!-- Location Distribution Chart -->
+                    <div style="background: rgba(100, 181, 246, 0.05); border-radius: 16px; padding: 24px;">
+                        <h3 style="color: var(--text-primary); font-size: 16px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-map-marker-alt" style="color: #64b5f6;"></i>
+                            Top Cities
+                        </h3>
+                        <canvas id="cityChart" style="max-height: 200px;"></canvas>
+                    </div>
+                </div>
+
+                <!-- User Analytics Table -->
+                <div style="background: rgba(102, 126, 234, 0.05); border-radius: 16px; padding: 24px; margin-bottom: 24px;">
+                    <h3 style="color: var(--text-primary); font-size: 16px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-users-cog" style="color: #667eea;"></i>
+                        User & Member Analytics
+                    </h3>
+                    
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: rgba(102, 126, 234, 0.1); border-radius: 8px;">
+                                    <th style="padding: 12px; text-align: left; color: var(--text-primary); font-weight: 600; font-size: 14px;">User</th>
+                                    <th style="padding: 12px; text-align: center; color: var(--text-primary); font-weight: 600; font-size: 14px;">Age</th>
+                                    <th style="padding: 12px; text-align: center; color: var(--text-primary); font-weight: 600; font-size: 14px;">Gender</th>
+                                    <th style="padding: 12px; text-align: center; color: var(--text-primary); font-weight: 600; font-size: 14px;">Blood</th>
+                                    <th style="padding: 12px; text-align: center; color: var(--text-primary); font-weight: 600; font-size: 14px;">Location</th>
+                                    <th style="padding: 12px; text-align: center; color: var(--text-primary); font-weight: 600; font-size: 14px;">Medicine</th>
+                                    <th style="padding: 12px; text-align: center; color: var(--text-primary); font-weight: 600; font-size: 14px;">Appointments</th>
+                                    <th style="padding: 12px; text-align: center; color: var(--text-primary); font-weight: 600; font-size: 14px;">Total</th>
+                                    <th style="padding: 12px; text-align: center; color: var(--text-primary); font-weight: 600; font-size: 14px;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user_stat in user_analytics %}
+                                <tr style="border-bottom: 1px solid rgba(102, 126, 234, 0.1);">
+                                    <td style="padding: 12px;">
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <div style="width: 36px; height: 36px; background: var(--primary-gradient); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                                <i class="fas fa-user" style="color: white; font-size: 14px;"></i>
+                                            </div>
+                                            <div>
+                                                <div style="font-weight: 600; color: var(--text-primary); font-size: 14px;">{{ user_stat.username }}</div>
+                                                <div style="color: var(--text-muted); font-size: 12px;">{{ user_stat.email }}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td style="padding: 12px; text-align: center;">
+                                        <span style="color: var(--text-primary); font-size: 13px;">
+                                            {{ user_stat.age|default:"N/A" }}
+                                        </span>
+                                    </td>
+                                    <td style="padding: 12px; text-align: center;">
+                                        {% if user_stat.gender == 'male' %}
+                                        <span style="color: #2196f3; font-size: 13px;">
+                                            <i class="fas fa-mars"></i> Male
+                                        </span>
+                                        {% elif user_stat.gender == 'female' %}
+                                        <span style="color: #e91e63; font-size: 13px;">
+                                            <i class="fas fa-venus"></i> Female
+                                        </span>
+                                        {% elif user_stat.gender == 'other' %}
+                                        <span style="color: #9c27b0; font-size: 13px;">
+                                            <i class="fas fa-genderless"></i> Other
+                                        </span>
+                                        {% else %}
+                                        <span style="color: var(--text-muted); font-size: 13px;">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td style="padding: 12px; text-align: center;">
+                                        <span style="background: rgba(229, 115, 115, 0.2); color: #e57373; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: 600;">
+                                            {{ user_stat.blood_group|default:"N/A" }}
+                                        </span>
+                                    </td>
+                                    <td style="padding: 12px; text-align: center;">
+                                        <div style="font-size: 12px; color: var(--text-primary);">
+                                            <div style="font-weight: 600;">{{ user_stat.city|default:"N/A" }}</div>
+                                            <div style="color: var(--text-muted);">{{ user_stat.state|default:"" }}</div>
+                                        </div>
+                                    </td>
+                                    <td style="padding: 12px; text-align: center;">
+                                        <span style="background: var(--secondary-gradient); color: #8b4513; padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: 600;">
+                                            {{ user_stat.medicine_count }}
+                                        </span>
+                                    </td>
+                                    <td style="padding: 12px; text-align: center;">
+                                        <span style="background: var(--success-gradient); color: #2d5a27; padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: 600;">
+                                            {{ user_stat.appointment_count }}
+                                        </span>
+                                    </td>
+                                    <td style="padding: 12px; text-align: center;">
+                                        <span style="background: var(--primary-gradient); color: white; padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: 600;">
+                                            {{ user_stat.total_reminders }}
+                                        </span>
+                                    </td>
+                                    <td style="padding: 12px; text-align: center;">
+                                        {% if user_stat.is_active %}
+                                        <span style="color: #2d5a27; font-size: 12px;">
+                                            <i class="fas fa-check-circle"></i> Active
+                                        </span>
+                                        {% else %}
+                                        <span style="color: #d32f2f; font-size: 12px;">
+                                            <i class="fas fa-ban"></i> Blocked
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="9" style="padding: 24px; text-align: center; color: var(--text-muted);">
+                                        No user data available
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Key Insights -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 20px; color: white;">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                            <i class="fas fa-star" style="font-size: 24px;"></i>
+                            <div>
+                                <div style="font-size: 28px; font-weight: 700;">{{ active_users }}</div>
+                                <div style="font-size: 13px; opacity: 0.9;">Active Users</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 12px; padding: 20px; color: white;">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                            <i class="fas fa-chart-bar" style="font-size: 24px;"></i>
+                            <div>
+                                <div style="font-size: 28px; font-weight: 700;">{{ avg_reminders_per_user }}</div>
+                                <div style="font-size: 13px; opacity: 0.9;">Avg Reminders/User</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border-radius: 12px; padding: 20px; color: white;">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                            <i class="fas fa-user-friends" style="font-size: 24px;"></i>
+                            <div>
+                                <div style="font-size: 28px; font-weight: 700;">{{ users_with_reminders }}</div>
+                                <div style="font-size: 13px; opacity: 0.9;">Users with Reminders</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); border-radius: 12px; padding: 20px; color: white;">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                            <i class="fas fa-percentage" style="font-size: 24px;"></i>
+                            <div>
+                                <div style="font-size: 28px; font-weight: 700;">{{ engagement_rate }}%</div>
+                                <div style="font-size: 13px; opacity: 0.9;">Engagement Rate</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Demographic Insights -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+                    <div style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); border-radius: 12px; padding: 20px; color: #333;">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                            <i class="fas fa-birthday-cake" style="font-size: 24px; color: #667eea;"></i>
+                            <div>
+                                <div style="font-size: 28px; font-weight: 700;">{{ avg_age }}</div>
+                                <div style="font-size: 13px; opacity: 0.8;">Average Age</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); border-radius: 12px; padding: 20px; color: #333;">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                            <i class="fas fa-venus" style="font-size: 24px; color: #e91e63;"></i>
+                            <div>
+                                <div style="font-size: 28px; font-weight: 700;">{{ female_count }}</div>
+                                <div style="font-size: 13px; opacity: 0.8;">Female Users</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, #d299c2 0%, #fef9d7 100%); border-radius: 12px; padding: 20px; color: #333;">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                            <i class="fas fa-mars" style="font-size: 24px; color: #2196f3;"></i>
+                            <div>
+                                <div style="font-size: 28px; font-weight: 700;">{{ male_count }}</div>
+                                <div style="font-size: 13px; opacity: 0.8;">Male Users</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, #fbc2eb 0%, #a6c1ee 100%); border-radius: 12px; padding: 20px; color: #333;">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                            <i class="fas fa-tint" style="font-size: 24px; color: #e57373;"></i>
+                            <div>
+                                <div style="font-size: 28px; font-weight: 700;">{{ most_common_blood }}</div>
+                                <div style="font-size: 13px; opacity: 0.8;">Most Common Blood</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%); border-radius: 12px; padding: 20px; color: #333;">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                            <i class="fas fa-hdd" style="font-size: 24px; color: #4caf50;"></i>
+                            <div>
+                                <div style="font-size: 28px; font-weight: 700;">{{ total_storage }}</div>
+                                <div style="font-size: 13px; opacity: 0.8;">Total Storage Used</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); border-radius: 12px; padding: 20px; color: #333;">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                            <i class="fas fa-file-alt" style="font-size: 24px; color: #ff6b6b;"></i>
+                            <div>
+                                <div style="font-size: 28px; font-weight: 700;">{{ total_documents }}</div>
+                                <div style="font-size: 13px; opacity: 0.8;">Total Documents</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Users Section -->
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px;">
+                    <h2 style="color: var(--text-primary); font-size: 24px; font-weight: 600; display: flex; align-items: center; gap: 12px;">
+                        <i class="fas fa-user-plus" style="color: #667eea;"></i>
+                        Recent Users
+                    </h2>
+                    <a href="{% url 'users' %}" class="btn btn-primary" style="padding: 10px 20px; font-size: 12px;">
+                        <i class="fas fa-arrow-right"></i>
+                        View All
+                    </a>
+                </div>
+                
+                {% if recent_users %}
+                    <div style="display: grid; gap: 16px;">
+                        {% for user in recent_users %}
+                        <div style="background: rgba(102, 126, 234, 0.05); border-radius: 16px; padding: 20px; display: flex; justify-content: space-between; align-items: center; transition: all 0.3s ease;">
+                            <div style="display: flex; align-items: center; gap: 16px;">
+                                <div style="width: 50px; height: 50px; background: var(--primary-gradient); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-user" style="color: white; font-size: 18px;"></i>
+                                </div>
+                                <div>
+                                    <div style="font-weight: 600; color: var(--text-primary); font-size: 16px;">
+                                        User {{ forloop.counter }}
+                                    </div>
+                                    <div style="color: var(--text-muted); font-size: 14px;">
+                                        {{ user.name }}
+                                    </div>
+                                    <div style="color: var(--text-muted); font-size: 12px;">
+                                        <i class="fas fa-calendar"></i>
+                                        Joined {{ user.created_at|date:"M d, Y" }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 12px;">
+                                <span style="background: var(--success-gradient); color: #2d5a27; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;">
+                                    {{ user.document_count }} docs
+                                </span>
+                                <a href="{% url 'user_detail' user.id %}" class="btn btn-primary" style="padding: 8px 16px; font-size: 12px;">
+                                    <i class="fas fa-eye"></i>
+                                    View
+                                </a>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-users"></i>
+                        <h3>No Users Yet</h3>
+                        <p>Users will appear here once they register on the platform.</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Recent Reminders Section -->
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px;">
+                    <h2 style="color: var(--text-primary); font-size: 24px; font-weight: 600; display: flex; align-items: center; gap: 12px;">
+                        <i class="fas fa-bell" style="color: #667eea;"></i>
+                        Recent Reminders
+                    </h2>
+                    <a href="{% url 'reminders' %}" class="btn btn-primary" style="padding: 10px 20px; font-size: 12px;">
+                        <i class="fas fa-arrow-right"></i>
+                        View All
+                    </a>
+                </div>
+                
+                {% if recent_medicine_reminders or recent_appointment_reminders %}
+                    <div class="reminder-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                        <!-- Recent Medicine Reminders -->
+                        {% for reminder in recent_medicine_reminders %}
+                        <div class="reminder-card" style="background: var(--secondary-gradient); color: #8b4513; border-radius: 16px; padding: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                                <div>
+                                    <h4 style="margin: 0 0 8px 0; display: flex; align-items: center; gap: 8px;">
+                                        <i class="fas fa-pills"></i>
+                                        {{ reminder.user.username }}
+                                    </h4>
+                                    <span style="background: rgba(139, 69, 19, 0.2); color: #8b4513; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: 500;">
+                                        Medicine
+                                    </span>
+                                </div>
+                                {% if reminder.is_sent %}
+                                <span style="background: rgba(45, 90, 39, 0.2); color: #2d5a27; padding: 4px 8px; border-radius: 12px; font-size: 12px;">
+                                    <i class="fas fa-check"></i> Sent
+                                </span>
+                                {% endif %}
+                            </div>
+                            
+                            <div style="font-size: 14px; line-height: 1.6; margin-bottom: 16px;">
+                                <div><strong>Medicine:</strong> {{ reminder.medicine_name }}</div>
+                                <div><strong>Dose:</strong> {{ reminder.dose|default:"N/A" }}</div>
+                                <div><strong>Meal:</strong> {{ reminder.meal|default:"N/A" }}</div>
+                            </div>
+
+                            {% if not reminder.is_sent %}
+                            <a href="{% url 'send_medicine_reminder' reminder.id %}" class="btn btn-success" style="width: 100%; font-size: 12px; padding: 8px;">
+                                <i class="fas fa-paper-plane"></i>
+                                Send Reminder
+                            </a>
+                            {% else %}
+                            <div style="text-align: center; padding: 8px; background: rgba(45, 90, 39, 0.1); border-radius: 8px; color: #2d5a27; font-size: 12px;">
+                                <i class="fas fa-check-circle"></i> Sent
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+
+                        <!-- Recent Appointment Reminders -->
+                        {% for reminder in recent_appointment_reminders %}
+                        <div class="reminder-card appointment" style="background: var(--success-gradient); color: var(--text-primary); border-radius: 16px; padding: 20px;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+                                <div>
+                                    <h4 style="margin: 0 0 8px 0; display: flex; align-items: center; gap: 8px;">
+                                        <i class="fas fa-calendar-check"></i>
+                                        {{ reminder.user.username }}
+                                    </h4>
+                                    <span style="background: rgba(45, 90, 39, 0.2); color: #2d5a27; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: 500;">
+                                        Appointment
+                                    </span>
+                                </div>
+                                {% if reminder.is_sent %}
+                                <span style="background: rgba(45, 90, 39, 0.2); color: #2d5a27; padding: 4px 8px; border-radius: 12px; font-size: 12px;">
+                                    <i class="fas fa-check"></i> Sent
+                                </span>
+                                {% endif %}
+                            </div>
+                            
+                            <div style="font-size: 14px; line-height: 1.6; margin-bottom: 16px;">
+                                <div><strong>Date:</strong> {{ reminder.appointment_date }}</div>
+                                <div><strong>Time:</strong> {{ reminder.appointment_time }}</div>
+                                <div><strong>Place:</strong> {{ reminder.place }}</div>
+                            </div>
+
+                            {% if not reminder.is_sent %}
+                            <a href="{% url 'send_appointment_reminder' reminder.id %}" class="btn btn-success" style="width: 100%; font-size: 12px; padding: 8px;">
+                                <i class="fas fa-paper-plane"></i>
+                                Send Reminder
+                            </a>
+                            {% else %}
+                            <div style="text-align: center; padding: 8px; background: rgba(45, 90, 39, 0.1); border-radius: 8px; color: #2d5a27; font-size: 12px;">
+                                <i class="fas fa-check-circle"></i> Sent
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-bell-slash"></i>
+                        <h3>No Reminders Yet</h3>
+                        <p>Reminders will appear here once they are created.</p>
+                        <a href="{% url 'reminders' %}" class="btn btn-primary" style="margin-top: 16px;">
+                            <i class="fas fa-plus"></i>
+                            Add Reminder
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card">
+                <h2 style="color: var(--text-primary); font-size: 24px; font-weight: 600; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
+                    <i class="fas fa-bolt" style="color: #667eea;"></i>
+                    Quick Actions
+                </h2>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                    <a href="{% url 'users' %}" class="btn btn-primary" style="padding: 20px; flex-direction: column; gap: 12px; text-transform: none;">
+                        <i class="fas fa-users" style="font-size: 24px;"></i>
+                        <span>Manage Users</span>
+                    </a>
+                    
+                    <a href="{% url 'reminders' %}" class="btn btn-secondary" style="padding: 20px; flex-direction: column; gap: 12px; text-transform: none;">
+                        <i class="fas fa-bell" style="font-size: 24px;"></i>
+                        <span>Send Reminders</span>
+                    </a>
+                    
+                    <a href="/admin/" class="btn btn-success" style="padding: 20px; flex-direction: column; gap: 12px; text-transform: none;">
+                        <i class="fas fa-cog" style="font-size: 24px;"></i>
+                        <span>Django Admin</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.stat-card {
+    animation: fadeInUp 0.6s ease;
+    animation-fill-mode: both;
+}
+
+.stat-card:nth-child(1) { animation-delay: 0.1s; }
+.stat-card:nth-child(2) { animation-delay: 0.2s; }
+.stat-card:nth-child(3) { animation-delay: 0.3s; }
+.stat-card:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // User Activity Chart (Bar Chart)
+    const userActivityCtx = document.getElementById('userActivityChart');
+    if (userActivityCtx) {
+        new Chart(userActivityCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ user_activity_labels|safe }},
+                datasets: [{
+                    label: 'Total Reminders',
+                    data: {{ user_activity_data|safe }},
+                    backgroundColor: 'rgba(102, 126, 234, 0.7)',
+                    borderColor: 'rgba(102, 126, 234, 1)',
+                    borderWidth: 2,
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Reminder Distribution Chart (Doughnut Chart)
+    const reminderDistCtx = document.getElementById('reminderDistChart');
+    if (reminderDistCtx) {
+        new Chart(reminderDistCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Medicine Reminders', 'Appointment Reminders'],
+                datasets: [{
+                    data: [{{ total_medicine_reminders }}, {{ total_appointment_reminders }}],
+                    backgroundColor: [
+                        'rgba(255, 183, 77, 0.8)',
+                        'rgba(129, 199, 132, 0.8)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 183, 77, 1)',
+                        'rgba(129, 199, 132, 1)'
+                    ],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            font: {
+                                size: 12
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Gender Distribution Chart (Pie Chart)
+    const genderCtx = document.getElementById('genderChart');
+    if (genderCtx) {
+        new Chart(genderCtx, {
+            type: 'pie',
+            data: {
+                labels: {{ gender_labels|safe }},
+                datasets: [{
+                    data: {{ gender_data|safe }},
+                    backgroundColor: [
+                        'rgba(33, 150, 243, 0.8)',
+                        'rgba(233, 30, 99, 0.8)',
+                        'rgba(156, 39, 176, 0.8)'
+                    ],
+                    borderColor: [
+                        'rgba(33, 150, 243, 1)',
+                        'rgba(233, 30, 99, 1)',
+                        'rgba(156, 39, 176, 1)'
+                    ],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            font: {
+                                size: 12
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Age Distribution Chart (Bar Chart)
+    const ageCtx = document.getElementById('ageChart');
+    if (ageCtx) {
+        new Chart(ageCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ age_labels|safe }},
+                datasets: [{
+                    label: 'Users',
+                    data: {{ age_data|safe }},
+                    backgroundColor: 'rgba(129, 199, 132, 0.7)',
+                    borderColor: 'rgba(129, 199, 132, 1)',
+                    borderWidth: 2,
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Blood Group Distribution Chart (Doughnut Chart)
+    const bloodGroupCtx = document.getElementById('bloodGroupChart');
+    if (bloodGroupCtx) {
+        new Chart(bloodGroupCtx, {
+            type: 'doughnut',
+            data: {
+                labels: {{ blood_labels|safe }},
+                datasets: [{
+                    data: {{ blood_data|safe }},
+                    backgroundColor: [
+                        'rgba(229, 115, 115, 0.8)',
+                        'rgba(239, 83, 80, 0.8)',
+                        'rgba(244, 67, 54, 0.8)',
+                        'rgba(211, 47, 47, 0.8)',
+                        'rgba(198, 40, 40, 0.8)',
+                        'rgba(183, 28, 28, 0.8)',
+                        'rgba(255, 138, 128, 0.8)',
+                        'rgba(255, 82, 82, 0.8)'
+                    ],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 10,
+                            font: {
+                                size: 11
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // City Distribution Chart (Horizontal Bar Chart)
+    const cityCtx = document.getElementById('cityChart');
+    if (cityCtx) {
+        new Chart(cityCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ city_labels|safe }},
+                datasets: [{
+                    label: 'Users',
+                    data: {{ city_data|safe }},
+                    backgroundColor: 'rgba(100, 181, 246, 0.7)',
+                    borderColor: 'rgba(100, 181, 246, 1)',
+                    borderWidth: 2,
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
