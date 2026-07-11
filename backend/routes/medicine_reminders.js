@@ -31,6 +31,14 @@ router.post('/', auth, async (req, res) => {
        night ? 1 : 0, night_time || null,
        repeat_days ? repeat_days.join(',') : null]
     );
+
+    // Insert into notifications history table
+    const reminderMsg = `💊 Medicine reminder set: Take ${name} ${dose ? `(${dose})` : ''} - ${meal || 'No meal dependency'}`;
+    await pool.query(
+      `INSERT INTO notifications (user_id, message) VALUES (?, ?)`,
+      [req.userId, reminderMsg.trim()]
+    );
+
     const [row] = await pool.query('SELECT * FROM medicine_reminders WHERE id = ?', [result.insertId]);
     res.status(201).json({ success: true, data: row[0] });
   } catch (err) {

@@ -26,6 +26,14 @@ router.post('/', auth, async (req, res) => {
       `INSERT INTO appointment_reminders (user_id, place, date, time, purpose) VALUES (?, ?, ?, ?, ?)`,
       [req.userId, place || null, date, time || null, purpose || null]
     );
+    
+    // Insert into notifications history table
+    const reminderMsg = `📅 Appointment set: ${purpose || 'Doctor Appointment'} at ${place || 'clinic'} on ${date} ${time || ''}`;
+    await pool.query(
+      `INSERT INTO notifications (user_id, message) VALUES (?, ?)`,
+      [req.userId, reminderMsg.trim()]
+    );
+
     const [row] = await pool.query('SELECT * FROM appointment_reminders WHERE id = ?', [result.insertId]);
     res.status(201).json({ success: true, data: row[0] });
   } catch (err) {
