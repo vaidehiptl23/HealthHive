@@ -291,6 +291,38 @@ async function createTables() {
     `);
     console.log('✅ Documents table created/verified');
 
+    // Migrate old documents table if needed
+    try {
+      await pool.query("ALTER TABLE documents ADD COLUMN category VARCHAR(100)");
+    } catch (e) {
+      if (e.code !== 'ER_DUP_FIELDNAME') console.error('Error migrating category column:', e.message);
+    }
+
+    try {
+      await pool.query("ALTER TABLE documents ADD COLUMN upload_for VARCHAR(100)");
+    } catch (e) {
+      if (e.code !== 'ER_DUP_FIELDNAME') console.error('Error migrating upload_for column:', e.message);
+    }
+
+    try {
+      await pool.query("ALTER TABLE documents ADD COLUMN note TEXT");
+    } catch (e) {
+      if (e.code !== 'ER_DUP_FIELDNAME') console.error('Error migrating note column:', e.message);
+    }
+
+    try {
+      await pool.query("ALTER TABLE documents ADD COLUMN file_url VARCHAR(500)");
+      await pool.query("UPDATE documents SET file_url = file_path WHERE file_url IS NULL OR file_url = ''");
+    } catch (e) {
+      if (e.code !== 'ER_DUP_FIELDNAME') console.error('Error migrating file_url column:', e.message);
+    }
+
+    try {
+      await pool.query("ALTER TABLE documents ADD COLUMN cloudinary_id VARCHAR(255)");
+    } catch (e) {
+      if (e.code !== 'ER_DUP_FIELDNAME') console.error('Error migrating cloudinary_id column:', e.message);
+    }
+
     // Notifications table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS notifications (
