@@ -5,7 +5,7 @@ import 'package:http_parser/http_parser.dart';
 import 'auth_service.dart';
 
 class ApiService {
-  static const String _baseUrl = 'https://healthhive-j1xd.onrender.com/api';
+  static const String _baseUrl = 'http://10.109.94.21:5000/api';
 
   static Future<Map<String, String>> _headers() async {
     final token = await AuthService.getToken();

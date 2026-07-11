@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
-  static const String _baseUrl = 'https://healthhive-j1xd.onrender.com/api';
+  static const String _baseUrl = 'http://10.109.94.21:5000/api';
   static const String _tokenKey = 'auth_token';
   static const String _userKey = 'auth_user';
 
