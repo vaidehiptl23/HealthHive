@@ -90,14 +90,65 @@ router.post('/upload', auth, async (req, res) => {
     // Cloudinary needs the extension in the public_id for 'raw' files like PDFs to serve them correctly.
     const publicId = resourceType === 'raw' ? `${safeName}${ext}` : safeName;
 
-    console.log('Uploading to Cloudinary, resource_type:', resourceType, 'folder:', folder);
-    const result = await uploadToCloudinary(buffer, {
-      folder: folder,
-      resource_type: resourceType,
-      public_id: publicId,
-      use_filename: true,
-      unique_filename: true,
-    });
+    console.log('Running Cloudinary upload and Gemini extraction in parallel...');
+    const [cloudinaryResult, aiExtractedMedicines] = await Promise.all([
+      uploadToCloudinary(buffer, {
+        folder: folder,
+        resource_type: resourceType,
+        public_id: publicId,
+        use_filename: true,
+        unique_filename: true,
+      }),
+      (async () => {
+        if (type === 'Prescription' && process.env.GEMINI_API_KEY) {
+          try {
+            console.log('🔮 Running Gemini AI Analysis in parallel...');
+            const geminiRes = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [
+                    {
+                      parts: [
+                        {
+                          text: "Analyze this medical prescription image or document and extract all medicines listed. Return ONLY a valid JSON array of objects representing each medicine. Do not wrap in markdown code blocks or add any other text. Return exactly a JSON array. Each object MUST have these keys: name (string, name of medicine), dose (string, e.g. '500mg' or '1 tab'), meal (string, one of 'After Meal', 'With Meal', 'Empty Stomach', 'No Dependency'), morning (boolean), afternoon (boolean), night (boolean), morning_time (string, format '08:00'), afternoon_time (string, format '13:00'), night_time (string, format '20:00')."
+                        },
+                        {
+                          inline_data: {
+                            mime_type: file.mimetype,
+                            data: buffer.toString('base64'),
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  generationConfig: {
+                    responseMimeType: "application/json"
+                  }
+                })
+              }
+            );
+
+            if (geminiRes.ok) {
+              const geminiData = await geminiRes.json();
+              const jsonText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (jsonText) {
+                const parsed = JSON.parse(jsonText.trim());
+                console.log('✅ Parallel Gemini Extracted Medicines:', parsed);
+                return parsed;
+              }
+            } else {
+              console.error('Gemini API Error (Parallel):', geminiRes.status, await geminiRes.text());
+            }
+          } catch (e) {
+            console.error('Gemini parallel error:', e.message);
+          }
+        }
+        return [];
+      })()
+    ]);
 
     const [dbResult] = await pool.query(
       `INSERT INTO documents (user_id, name, type, category, upload_for, note, file_url, cloudinary_id, file_size, mime_type)
@@ -109,63 +160,15 @@ router.post('/upload', auth, async (req, res) => {
         category || null,
         upload_for || null,
         note || null,
-        result.secure_url,
-        result.public_id,
+        cloudinaryResult.secure_url,
+        cloudinaryResult.public_id,
         file.size,
         file.mimetype,
       ]
     );
 
     const [row] = await pool.query('SELECT * FROM documents WHERE id = ?', [dbResult.insertId]);
-    console.log('Upload success, Cloudinary URL:', result.secure_url);
-
-    // Call Gemini API to extract medicines if it's a Prescription and key exists
-    let aiExtractedMedicines = [];
-    if (type === 'Prescription' && process.env.GEMINI_API_KEY) {
-      try {
-        console.log('🔮 Prescription detected, running Gemini AI Analysis...');
-        const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [
-                    {
-                      text: "Analyze this medical prescription image or document and extract all medicines listed. Return ONLY a valid JSON array of objects representing each medicine. Do not wrap in markdown code blocks or add any other text. Return exactly a JSON array. Each object MUST have these keys: name (string, name of medicine), dose (string, e.g. '500mg' or '1 tab'), meal (string, one of 'After Meal', 'With Meal', 'Empty Stomach', 'No Dependency'), morning (boolean), afternoon (boolean), night (boolean), morning_time (string, format '08:00'), afternoon_time (string, format '13:00'), night_time (string, format '20:00')."
-                    },
-                    {
-                      inline_data: {
-                        mime_type: file.mimetype,
-                        data: buffer.toString('base64'),
-                      }
-                    }
-                  ]
-                }
-              ],
-              generationConfig: {
-                responseMimeType: "application/json"
-              }
-            })
-          }
-        );
-
-        if (geminiRes.ok) {
-          const geminiData = await geminiRes.json();
-          const jsonText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-          if (jsonText) {
-            aiExtractedMedicines = JSON.parse(jsonText.trim());
-            console.log('✅ Gemini Extracted Medicines:', aiExtractedMedicines);
-          }
-        } else {
-          console.error('Gemini API Error:', geminiRes.status, await geminiRes.text());
-        }
-      } catch (e) {
-        console.error('Gemini parsing error:', e.message);
-      }
-    }
+    console.log('Upload success, Cloudinary URL:', cloudinaryResult.secure_url);
 
     res.status(201).json({ 
       success: true, 

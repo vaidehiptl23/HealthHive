@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:io';
+import 'dart:math';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
@@ -48,6 +49,7 @@ class _ShareCartScreenState extends State<ShareCartScreen> {
         List<XFile> xFiles = [];
         String debugMsg = "Unknown";
         final tempDir = await getTemporaryDirectory();
+        int counter = 0;
 
         for (var doc in _cartService.cart) {
           final url = doc['file_url'] as String?;
@@ -65,7 +67,8 @@ class _ShareCartScreenState extends State<ShareCartScreen> {
                 }
                 final safeName = name.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_');
                 
-                final tempFile = File('${tempDir.path}/${safeName}_${DateTime.now().millisecondsSinceEpoch}.$ext');
+                final tempFile = File('${tempDir.path}/${safeName}_${counter}_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(10000)}.$ext');
+                counter++;
                 await tempFile.writeAsBytes(response.bodyBytes);
                 
                 xFiles.add(XFile(
