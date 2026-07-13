@@ -68,14 +68,13 @@ class _ShareCartScreenState extends State<ShareCartScreen> {
                 }
                 final safeName = name.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_');
                 
-                final tempFile = File('${tempDir.path}/${safeName}_${counter}_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(10000)}.$ext');
+                final tempFile = File('${tempDir.path}/share_doc_${counter}_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(10000)}.$ext');
                 counter++;
                 await tempFile.writeAsBytes(response.bodyBytes);
                 
                 xFiles.add(XFile(
                   tempFile.path, 
-                  name: '$safeName.$ext', 
-                  mimeType: mimeType
+                  name: '$safeName.$ext',
                 ));
               } else {
                 debugMsg = "Code ${response.statusCode}";
