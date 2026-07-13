@@ -85,8 +85,8 @@ class _RecentlyUploadedDocsState extends State<RecentlyUploadedDocs> {
     } else if (action == 'Rename') {
       _showRenameDialog(id, doc['name'] ?? 'Document');
     } else if (action == 'Download') {
-      final url = doc['file_url'];
-      if (url != null && url.isNotEmpty) {
+      final url = ApiService.resolveDocUrl(doc['file_url']);
+      if (url.isNotEmpty) {
         try {
           await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
         } catch (e) {
@@ -215,7 +215,7 @@ class _RecentlyUploadedDocsState extends State<RecentlyUploadedDocs> {
     final uploadFor = (doc['upload_for'] as String?) ?? '';
     final note = (doc['note'] as String?) ?? '';
     final id = doc['id'] as int;
-    final fileUrl = (doc['file_url'] as String?) ?? '';
+    final fileUrl = ApiService.resolveDocUrl(doc['file_url'] as String?);
 
     return GestureDetector(
       onTap: () async {

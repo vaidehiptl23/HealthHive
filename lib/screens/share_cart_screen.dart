@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:http/http.dart' as http;
 import '../utils/colors.dart';
 import '../services/cart_service.dart';
+import '../services/api_service.dart';
 
 class ShareCartScreen extends StatefulWidget {
   const ShareCartScreen({super.key});
@@ -38,8 +39,8 @@ class _ShareCartScreenState extends State<ShareCartScreen> {
         // Fallback for Web: Web browsers block cross-domain byte fetching (CORS) 
         // and Web Share API is weak. We'll simply trigger direct downloads! 
         for (var doc in _cartService.cart) {
-          final url = doc['file_url'] as String?;
-          if (url != null && url.isNotEmpty) {
+          final url = ApiService.resolveDocUrl(doc['file_url'] as String?);
+          if (url.isNotEmpty) {
             await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
           }
         }
@@ -52,10 +53,10 @@ class _ShareCartScreenState extends State<ShareCartScreen> {
         int counter = 0;
 
         for (var doc in _cartService.cart) {
-          final url = doc['file_url'] as String?;
+          final url = ApiService.resolveDocUrl(doc['file_url'] as String?);
           final name = doc['name'] as String? ?? 'Document';
           
-          if (url != null && url.isNotEmpty) {
+          if (url.isNotEmpty) {
             try {
               final response = await http.get(Uri.parse(url));
               if (response.statusCode == 200) {

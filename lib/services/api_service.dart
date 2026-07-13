@@ -373,6 +373,18 @@ class ApiService {
     }
   }
 
+  static String resolveDocUrl(String? url) {
+    if (url == null || url.isEmpty) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    final root = _baseUrl.replaceAll('/api', '');
+    if (url.startsWith('/')) {
+      return '$root$url';
+    }
+    return '$root/$url';
+  }
+
   // ─── AI CHAT (OLLAMA) ──────────────────────────────────────────────────────
 
   static Future<String> sendChatMessage(String message) async {

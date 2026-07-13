@@ -785,10 +785,12 @@ class _HomeScreenState extends State<HomeScreen> {
     } else if (action == 'Rename') {
       _showRenameDialog(id, doc['name'] ?? 'Document');
     } else if (action == 'Download') {
-      final url = doc['file_url'];
-      if (url != null && url.isNotEmpty) {
-        if (await canLaunchUrl(Uri.parse(url))) {
+      final url = ApiService.resolveDocUrl(doc['file_url']);
+      if (url.isNotEmpty) {
+        try {
           await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        } catch (e) {
+          debugPrint("Error launching url: $e");
         }
       }
     } else if (action == 'Delete') {
