@@ -54,10 +54,18 @@ class _ShareCartScreenState extends State<ShareCartScreen> {
             try {
               final response = await http.get(Uri.parse(url));
               if (response.statusCode == 200) {
-                final fileExt = url.split('.').last.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
+                final mimeType = doc['mime_type'] as String? ?? 'application/octet-stream';
+                final fileExt = url.split('.').last.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+                String ext = (fileExt.isNotEmpty && fileExt.length <= 4) ? fileExt : 'pdf';
+                if (ext == 'pdf' && mimeType.startsWith('image/')) {
+                  ext = mimeType == 'image/png' ? 'png' : 'jpg';
+                }
                 final safeName = name.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_');
-                final ext = (fileExt.isNotEmpty && fileExt.length <= 4) ? fileExt : 'pdf';
-                xFiles.add(XFile.fromData(response.bodyBytes, name: '$safeName.$ext', mimeType: 'application/pdf'));
+                xFiles.add(XFile.fromData(
+                  response.bodyBytes, 
+                  name: '$safeName.$ext', 
+                  mimeType: mimeType
+                ));
               } else {
                 debugMsg = "Code ${response.statusCode}";
               }
