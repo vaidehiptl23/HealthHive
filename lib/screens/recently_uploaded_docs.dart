@@ -87,8 +87,10 @@ class _RecentlyUploadedDocsState extends State<RecentlyUploadedDocs> {
     } else if (action == 'Download') {
       final url = doc['file_url'];
       if (url != null && url.isNotEmpty) {
-        if (await canLaunchUrl(Uri.parse(url))) {
+        try {
           await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        } catch (e) {
+          debugPrint("Error launching url: $e");
         }
       }
     } else if (action == 'Delete') {
@@ -218,8 +220,10 @@ class _RecentlyUploadedDocsState extends State<RecentlyUploadedDocs> {
     return GestureDetector(
       onTap: () async {
         if (fileUrl.isNotEmpty) {
-          if (await canLaunchUrl(Uri.parse(fileUrl))) {
+          try {
             await launchUrl(Uri.parse(fileUrl), mode: LaunchMode.externalApplication);
+          } catch (e) {
+            debugPrint("Error launching url: $e");
           }
         }
       },
