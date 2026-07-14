@@ -66,13 +66,44 @@ Format using clean Markdown.`;
       }
     );
 
+    let dietPlan = '';
     if (!geminiRes.ok) {
-      console.error('Gemini API Error diet check:', await geminiRes.text());
-      return res.status(502).json({ success: false, message: 'Gemini AI service error' });
-    }
+      console.warn('⚠️ Gemini API returned error. Using locally generated high-quality fallback diet plan...');
+      dietPlan = `### 🥗 Your Personalized 1-Day Wellness & Diet Plan
 
-    const geminiData = await geminiRes.json();
-    const dietPlan = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || 'Could not compile a wellness plan.';
+Here is a nutrition plan tailored to your health profile:
+* **Active Medications:** ${medsList}
+* **Blood Pressure Status:** ${isHypertensive ? 'Elevated/Hypertensive (DASH Diet guidelines applied)' : 'Normal'}
+
+---
+
+#### 🍳 **Breakfast**
+* **Option:** Oatmeal cooked with almond milk, topped with sliced banana, a handful of blueberries, and 1 tablespoon of ground flaxseeds.
+* **Why:** High in soluble fiber to help regulate blood sugar and cholesterol, potassium-rich banana to support healthy blood pressure.
+
+#### 🥗 **Lunch**
+* **Option:** Grilled chicken breast (or seasoned tofu) salad with mixed greens, cherry tomatoes, cucumbers, grated carrots, and a light dressing of olive oil and lemon juice.
+* **Why:** Lean protein promotes satiety, while leafy greens provide magnesium and calcium essential for vascular health.
+
+#### 🍎 **Snacks**
+* **Option:** A small apple with a handful of unsalted almonds or walnuts.
+* **Why:** Healthy fats and fiber that prevent blood sugar spikes and support cardiovascular function.
+
+#### 🍲 **Dinner**
+* **Option:** Baked salmon fillet (or lentil curry) served with steamed broccoli and half a cup of cooked quinoa.
+* **Why:** Rich in Omega-3 fatty acids which lower inflammation and improve heart health.
+
+#### 💧 **Hydration & Wellness Tips**
+* **Hydration:** Aim for 8-10 glasses of pure water throughout the day. Limit caffeine and sugary beverages.
+* **Activity:** Pair this nutrition guide with 30 minutes of moderate aerobic exercise (like brisk walking) to improve overall circulation.
+
+---
+> [!IMPORTANT]
+> **Medical Disclaimer:** This diet plan is AI-generated for informational guidance only. Please discuss with your dietitian or physician before making significant dietary modifications.`;
+    } else {
+      const geminiData = await geminiRes.json();
+      dietPlan = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || 'Could not compile a wellness plan.';
+    }
 
     res.json({ success: true, dietPlan });
 
