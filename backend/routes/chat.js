@@ -98,44 +98,76 @@ router.post('/', auth, async (req, res) => {
 STRICT RULES:
 1. ONLY respond to health-related questions (symptoms, medicines, diet, exercise, vitals, medical appointments, wellness).
 2. If the user asks something NOT related to health, politely decline: "I can only help with health-related questions. Please ask me about your health, medicines, vitals, or wellness."
-3. Keep responses SHORT (2-4 sentences max). Be concise and meaningful.
-4. Use the patient's health data below to personalize your answers when relevant.
-5. Never diagnose or prescribe. Always suggest consulting a doctor for serious concerns.
-6. Be warm, friendly, and supportive.
+3. If the user asks about a symptom, pain, or discomfort:
+   - Ask clarifying questions (e.g. onset, severity, accompanying symptoms).
+   - Triage their condition: Low Risk (Home Care), Medium Risk (Schedule Clinic Visit), or High Risk (Go to Emergency Room).
+   - Present recommendations in clear, concise bullet points.
+4. Keep responses relatively short (max 4-5 sentences).
+5. Use the patient's health data below to personalize your answers when relevant.
+6. Never diagnose or prescribe. Always suggest consulting a doctor for serious concerns.
+7. Be warm, friendly, and supportive.
 
 PATIENT HEALTH DATA:
 ${context}
 
-Remember: Short, focused, health-only responses using the patient data above when relevant.`;
+Remember: Focus on health, apply symptom triaging logic when needed, and use patient data when relevant.`;
 
-    // ── Call Ollama ────────────────────────────────────────────
-
-    const ollamaRes = await fetch(`${OLLAMA_URL}/api/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: OLLAMA_MODEL,
-        prompt: message,
-        system: systemPrompt,
-        stream: false,
-      }),
-    });
-
-    if (!ollamaRes.ok) {
-      const errText = await ollamaRes.text();
-      console.error('Ollama error:', ollamaRes.status, errText);
-      return res.status(502).json({ success: false, message: 'AI service unavailable. Make sure Ollama is running.' });
+    let reply = "";
+    if (process.env.GEMINI_API_KEY) {
+      console.log("🔮 Using Gemini for Chat...");
+      try {
+        const geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [{ text: `${systemPrompt}\n\nUser Message: ${message}` }]
+                }
+              ]
+            })
+          }
+        );
+        if (geminiRes.ok) {
+          const geminiData = await geminiRes.json();
+          reply = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        }
+      } catch (geminiErr) {
+        console.error('Gemini chat error, falling back to Ollama:', geminiErr);
+      }
     }
 
-    const ollamaData = await ollamaRes.json();
-    const reply = ollamaData.response || 'Sorry, I could not generate a response.';
+    if (!reply) {
+      console.log("🦙 Falling back to Ollama for Chat...");
+      const ollamaRes = await fetch(`${OLLAMA_URL}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: OLLAMA_MODEL,
+          prompt: message,
+          system: systemPrompt,
+          stream: false,
+        }),
+      });
+
+      if (!ollamaRes.ok) {
+        const errText = await ollamaRes.text();
+        console.error('Ollama error:', ollamaRes.status, errText);
+        return res.status(502).json({ success: false, message: 'AI service unavailable. Make sure Ollama or Gemini is configured.' });
+      }
+
+      const ollamaData = await ollamaRes.json();
+      reply = ollamaData.response || 'Sorry, I could not generate a response.';
+    }
 
     res.json({ success: true, reply });
 
   } catch (err) {
     console.error('Chat error:', err.message);
     if (err.cause && err.cause.code === 'ECONNREFUSED') {
-      return res.status(502).json({ success: false, message: 'Cannot connect to Ollama. Please make sure Ollama is running on your machine.' });
+      return res.status(502).json({ success: false, message: 'Cannot connect to AI service. Please make sure Ollama is running or Gemini is configured.' });
     }
     res.status(500).json({ success: false, message: 'Server error' });
   }

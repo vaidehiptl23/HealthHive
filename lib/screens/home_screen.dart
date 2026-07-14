@@ -17,6 +17,7 @@ import 'cart.dart';
 import 'notifications.dart';
 import 'heart_rate_screen.dart';
 import 'blood_pressure_screen.dart';
+import 'diet_planner_screen.dart';
 import 'share_cart_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -97,6 +98,85 @@ class _HomeScreenState extends State<HomeScreen> {
     if (bpRecords.isNotEmpty && mounted) {
       setState(() => _bpValue = '${bpRecords.first['systolic']}/${bpRecords.first['diastolic']}');
     }
+  }
+
+  void _showVoiceLoggerDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.auto_awesome, color: Colors.amber),
+            SizedBox(width: 8),
+            Text("AI Vitals Logger"),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Tell the AI what to log. You can type or use your keyboard's microphone button.",
+              style: TextStyle(fontSize: 13, color: Colors.black54),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              decoration: InputDecoration(
+                hintText: "e.g. 'My blood pressure is 120 over 80'",
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              ),
+              maxLines: 2,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () async {
+              final phrase = controller.text.trim();
+              if (phrase.isEmpty) return;
+              Navigator.pop(dialogCtx);
+              
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) => const Center(child: CircularProgressIndicator()),
+              );
+
+              final res = await ApiService.logVitalsByVoice(phrase);
+              if (!mounted) return;
+              Navigator.pop(context); // hide loading
+
+              if (res['success'] == true) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(res['message']),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+                _loadLastReadings();
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(res['message'] ?? 'Could not parse vitals.'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text("Log Vitals"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -325,6 +405,41 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
 
+              const SizedBox(height: 12),
+              InkWell(
+                onTap: () => Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => DietPlannerScreen(userEmail: widget.userEmail),
+                )),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.auto_awesome, color: Colors.amber, size: 24),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("AI Personalized Diet Planner", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary)),
+                            SizedBox(height: 2),
+                            Text("Get custom meals tailored to your health profile", style: TextStyle(fontSize: 11, color: Colors.black54)),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.chevron_right, color: AppColors.primary.withValues(alpha: 0.8)),
+                    ],
+                  ),
+                ),
+              ),
+
               const SizedBox(height: 40),
 
               ////////////////////////////////////////////////////////////
@@ -368,6 +483,66 @@ class _HomeScreenState extends State<HomeScreen> {
               // ),
               //
               // const SizedBox(height: 18),
+
+              // AI Voice Health Logger Card
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppColors.primary.withValues(alpha: 0.8), AppColors.primary],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    )
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: Colors.white24,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.mic, color: Colors.white, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "AI Smart Health Logger",
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            "Type or voice log: 'BP is 120/80' or 'HR 72'",
+                            style: TextStyle(color: Colors.white70, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      ),
+                      onPressed: _showVoiceLoggerDialog,
+                      child: const Text("Log Vitals", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
 
               /// HEART RATE + BP ROW
               Row(

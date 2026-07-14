@@ -1,9 +1,11 @@
 const express = require('express');
-const router = express.Router();
+const router = require('express').Router();
 const auth = require('../middleware/auth');
 const pool = require('../config/database');
 const cloudinary = require('cloudinary').v2;
 const streamifier = require('streamifier');
+const fs = require('fs');
+const path = require('path');
 
 // Configure Cloudinary
 cloudinary.config({
@@ -227,6 +229,88 @@ router.delete('/:id', auth, async (req, res) => {
   } catch (err) {
     console.error('Delete document error:', err);
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// POST /api/documents/:id/analyze
+router.post('/:id/analyze', auth, async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT * FROM documents WHERE id = ? AND user_id = ?',
+      [req.params.id, req.userId]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Document not found or unauthorized' });
+    }
+
+    const doc = rows[0];
+
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(400).json({ success: false, message: 'Gemini API Key is not configured on the server.' });
+    }
+
+    console.log(`🔮 Analyzing document id ${doc.id} (${doc.name}) using Gemini AI...`);
+
+    let buffer;
+    if (doc.file_url.startsWith('http://') || doc.file_url.startsWith('https://')) {
+      const fileRes = await fetch(doc.file_url);
+      if (!fileRes.ok) {
+        throw new Error(`Failed to download file from Cloudinary: ${fileRes.statusText}`);
+      }
+      buffer = Buffer.from(await fileRes.arrayBuffer());
+    } else {
+      const filePath = path.join(__dirname, '..', doc.file_url);
+      if (!fs.existsSync(filePath)) {
+        throw new Error(`Local file not found at path: ${filePath}`);
+      }
+      buffer = fs.readFileSync(filePath);
+    }
+
+    const promptText = `You are HealthHive AI. Analyze this medical lab report or medical document image/PDF. 
+Provide a clear, detailed, patient-friendly explanation of the findings.
+1. Translate complex biomarkers or terms into simple, understandable language.
+2. Clearly list any values that are high, low, or out of the normal range.
+3. Suggest simple wellness, dietary, or lifestyle steps based on these findings.
+4. End with a strong medical disclaimer: "This AI analysis is for informational purposes only. Please consult your physician or healthcare provider to interpret these results and prescribe treatment."
+Format the response using clean Markdown with clear headings and bullet points.`;
+
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: promptText },
+                {
+                  inline_data: {
+                    mime_type: doc.mime_type || 'application/pdf',
+                    data: buffer.toString('base64'),
+                  }
+                }
+              ]
+            }
+          ]
+        })
+      }
+    );
+
+    if (!geminiRes.ok) {
+      const errText = await geminiRes.text();
+      console.error('Gemini API Error:', geminiRes.status, errText);
+      return res.status(502).json({ success: false, message: 'Gemini AI service error' });
+    }
+
+    const geminiData = await geminiRes.json();
+    const analysis = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || 'Could not parse analysis results.';
+
+    res.json({ success: true, analysis });
+
+  } catch (err) {
+    console.error('Analyze document error:', err);
+    res.status(500).json({ success: false, message: err.message || 'Server error' });
   }
 });
 

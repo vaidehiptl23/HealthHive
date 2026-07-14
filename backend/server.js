@@ -21,6 +21,8 @@ const medicineReminderRoutes = require('./routes/medicine_reminders');
 const testReminderRoutes = require('./routes/test_reminders');
 const chatRoutes = require('./routes/chat');
 const notificationRoutes = require('./routes/notifications');
+const vitalsRoutes = require('./routes/vitals');
+const wellnessRoutes = require('./routes/wellness');
 
 const app = express();
 
@@ -48,6 +50,8 @@ app.use('/api/reminders', appointmentRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/heart-rate', heartRateRoutes);
 app.use('/api/blood-pressure', bloodPressureRoutes);
+app.use('/api/vitals', vitalsRoutes);
+app.use('/api/wellness', wellnessRoutes);
 app.use('/api/family', familyRoutes);
 app.use('/api/medicine-reminders', medicineReminderRoutes);
 app.use('/api/test-reminders', testReminderRoutes);

@@ -156,6 +156,52 @@ class ApiService {
     return [];
   }
 
+  static Future<Map<String, dynamic>> getVitalsTrends() async {
+    try {
+      final res = await http.get(
+        Uri.parse('$_baseUrl/vitals/trends'),
+        headers: await _headers(),
+      );
+      if (res.statusCode == 200) {
+        return jsonDecode(res.body);
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('getVitalsTrends error: $e');
+    }
+    return {'success': false, 'trends': 'Failed to retrieve vitals trends.'};
+  }
+
+  static Future<Map<String, dynamic>> logVitalsByVoice(String phrase) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$_baseUrl/vitals/voice-log'),
+        headers: await _headers(),
+        body: jsonEncode({'text': phrase}),
+      );
+      if (res.statusCode == 200 || res.statusCode == 400) {
+        return jsonDecode(res.body);
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('logVitalsByVoice error: $e');
+    }
+    return {'success': false, 'message': 'Connection error occurred.'};
+  }
+
+  static Future<Map<String, dynamic>> getDietPlan() async {
+    try {
+      final res = await http.get(
+        Uri.parse('$_baseUrl/wellness/diet-plan'),
+        headers: await _headers(),
+      );
+      if (res.statusCode == 200) {
+        return jsonDecode(res.body);
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('getDietPlan error: $e');
+    }
+    return {'success': false, 'dietPlan': 'Failed to compile diet plan.'};
+  }
+
   // ─── APPOINTMENT REMINDERS ─────────────────────────────────────────────────
 
   static Future<bool> saveAppointmentReminder({
@@ -230,6 +276,23 @@ class ApiService {
       if (kDebugMode) debugPrint('saveMedicineReminder error: $e');
       return false;
     }
+  }
+
+  static Future<String> checkDrugInteraction(String medicineName) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$_baseUrl/medicine-reminders/check-interaction'),
+        headers: await _headers(),
+        body: jsonEncode({'name': medicineName}),
+      );
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        return data['interaction'] ?? 'NO_INTERACTION';
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('checkDrugInteraction error: $e');
+    }
+    return 'NO_INTERACTION';
   }
 
   static Future<List<Map<String, dynamic>>> getMedicineReminders() async {
@@ -357,6 +420,22 @@ class ApiService {
       return res.statusCode == 200;
     } catch (_) {
       return false;
+    }
+  }
+
+  static Future<Map<String, dynamic>> analyzeDocument(int id) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$_baseUrl/documents/$id/analyze'),
+        headers: await _headers(),
+      );
+      if (res.statusCode == 200) {
+        return jsonDecode(res.body);
+      }
+      final err = jsonDecode(res.body);
+      return {'success': false, 'message': err['message'] ?? 'Analysis failed'};
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
     }
   }
 

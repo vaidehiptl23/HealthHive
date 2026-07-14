@@ -84,6 +84,8 @@ class _RecentlyUploadedDocsState extends State<RecentlyUploadedDocs> {
       );
     } else if (action == 'Rename') {
       _showRenameDialog(id, doc['name'] ?? 'Document');
+    } else if (action == 'AI Analysis') {
+      _runAIAnalysis(id, doc['name'] ?? 'Document');
     } else if (action == 'Download') {
       final url = ApiService.resolveDocUrl(doc['file_url']);
       if (url.isNotEmpty) {
@@ -118,6 +120,150 @@ class _RecentlyUploadedDocsState extends State<RecentlyUploadedDocs> {
             child: const Text('Rename', style: TextStyle(color: AppColors.primary)),
           ),
         ],
+      ),
+    );
+  }
+
+  void _runAIAnalysis(int id, String name) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text("Analyzing Report with AI...", style: TextStyle(fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final res = await ApiService.analyzeDocument(id);
+    if (!mounted) return;
+    Navigator.pop(context);
+
+    if (res['success'] == true && res['analysis'] != null) {
+      _showAnalysisSheet(name, res['analysis']);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(res['message'] ?? 'Failed to analyze report'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  void _showAnalysisSheet(String name, String content) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (_, scrollController) => Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.auto_awesome, color: Colors.amber, size: 22),
+                            SizedBox(width: 8),
+                            Text("AI Insights Report", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(name, style: const TextStyle(fontSize: 13, color: Colors.black54), overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const Divider(height: 24),
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  children: [
+                    ...content.split('\n').map((line) {
+                      final trimmed = line.trim();
+                      if (trimmed.startsWith('###')) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 14, bottom: 6),
+                          child: Text(
+                            trimmed.replaceAll('###', '').trim(),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary),
+                          ),
+                        );
+                      } else if (trimmed.startsWith('##')) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 18, bottom: 8),
+                          child: Text(
+                            trimmed.replaceAll('##', '').trim(),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.primary),
+                          ),
+                        );
+                      } else if (trimmed.startsWith('#')) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 20, bottom: 10),
+                          child: Text(
+                            trimmed.replaceAll('#', '').trim(),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary),
+                          ),
+                        );
+                      } else if (trimmed.startsWith('*') || trimmed.startsWith('-')) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text("• ", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary)),
+                              Expanded(
+                                child: Text(
+                                  trimmed.substring(1).trim().replaceAll('**', ''),
+                                  style: const TextStyle(fontSize: 13, height: 1.4),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      } else if (trimmed.isEmpty) {
+                        return const SizedBox(height: 10);
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Text(
+                          trimmed.replaceAll('**', ''),
+                          style: const TextStyle(fontSize: 13, height: 1.4, color: Colors.black87),
+                        ),
+                      );
+                    }),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -270,6 +416,13 @@ class _RecentlyUploadedDocsState extends State<RecentlyUploadedDocs> {
               icon: const Icon(Icons.more_vert, size: 20, color: Colors.black54),
               itemBuilder: (context) => [
                 const PopupMenuItem(value: 'Add to Cart', child: Text('Add to Cart')),
+                const PopupMenuItem(value: 'AI Analysis', child: Row(
+                  children: [
+                    Icon(Icons.auto_awesome, size: 16, color: Colors.amber),
+                    SizedBox(width: 8),
+                    Text('AI Analysis'),
+                  ],
+                )),
                 const PopupMenuItem(value: 'Rename', child: Text('Rename')),
                 const PopupMenuItem(value: 'Download', child: Text('Download')),
                 const PopupMenuItem(value: 'Delete', child: Text('Delete', style: TextStyle(color: Colors.red))),

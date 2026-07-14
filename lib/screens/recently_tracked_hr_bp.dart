@@ -45,6 +45,141 @@ class _RecentlyTrackedScreenState extends State<RecentlyTrackedScreen> {
     return '${dt.day}/${dt.month}/${dt.year}  $h:$m';
   }
 
+  void _showVitalsTrendAnalysis() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text("Analyzing Vitals with AI...", style: TextStyle(fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final res = await ApiService.getVitalsTrends();
+    if (!mounted) return;
+    Navigator.pop(context);
+
+    if (res['success'] == true && res['trends'] != null) {
+      _showReportSheet(res['trends']);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(res['message'] ?? 'Failed to analyze vitals trends'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  void _showReportSheet(String content) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (_, scrollController) => Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.auto_awesome, color: Colors.amber, size: 22),
+                      SizedBox(width: 8),
+                      Text("AI Vitals Trend Insights", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const Divider(height: 24),
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  children: [
+                    ...content.split('\n').map((line) {
+                      final trimmed = line.trim();
+                      if (trimmed.startsWith('###')) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 14, bottom: 6),
+                          child: Text(
+                            trimmed.replaceAll('###', '').trim(),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary),
+                          ),
+                        );
+                      } else if (trimmed.startsWith('##')) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 18, bottom: 8),
+                          child: Text(
+                            trimmed.replaceAll('##', '').trim(),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.primary),
+                          ),
+                        );
+                      } else if (trimmed.startsWith('#')) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 20, bottom: 10),
+                          child: Text(
+                            trimmed.replaceAll('#', '').trim(),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary),
+                          ),
+                        );
+                      } else if (trimmed.startsWith('*') || trimmed.startsWith('-')) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text("• ", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary)),
+                              Expanded(
+                                child: Text(
+                                  trimmed.substring(1).trim().replaceAll('**', ''),
+                                  style: const TextStyle(fontSize: 13, height: 1.4),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      } else if (trimmed.isEmpty) {
+                        return const SizedBox(height: 10);
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Text(
+                          trimmed.replaceAll('**', ''),
+                          style: const TextStyle(fontSize: 13, height: 1.4, color: Colors.black87),
+                        ),
+                      );
+                    }),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -79,8 +214,16 @@ class _RecentlyTrackedScreenState extends State<RecentlyTrackedScreen> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Text('Recently Tracked',
-                      style: Theme.of(context).textTheme.headlineSmall),
+                  Expanded(
+                    child: Text('Recently Tracked',
+                        style: Theme.of(context).textTheme.headlineSmall),
+                  ),
+                  if (_combined.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.auto_awesome, color: Colors.amber),
+                      tooltip: "AI Trend Analysis",
+                      onPressed: _showVitalsTrendAnalysis,
+                    ),
                 ],
               ),
 

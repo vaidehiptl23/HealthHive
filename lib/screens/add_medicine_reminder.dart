@@ -45,6 +45,52 @@ class _AddMedicineReminderScreenState extends State<AddMedicineReminderScreen> {
       '${t.hour.toString().padLeft(2, "0")}:${t.minute.toString().padLeft(2, "0")}';
 
   Future<void> _save() async {
+    // Run drug-to-drug interaction checks first
+    for (var med in medicines) {
+      final name = (med["name"] as TextEditingController).text.trim();
+      if (name.isEmpty) continue;
+      
+      setState(() => _saving = true);
+      final checkResult = await ApiService.checkDrugInteraction(name);
+      if (!mounted) return;
+      setState(() => _saving = false);
+
+      if (checkResult.startsWith("WARNING:")) {
+        final proceed = await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (dialogCtx) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                SizedBox(width: 8),
+                Text("AI Drug Warning"),
+              ],
+            ),
+            content: Text(
+              "${checkResult.replaceAll('WARNING:', '').trim()}\n\nDo you still wish to schedule this medicine?",
+              style: const TextStyle(height: 1.4),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogCtx, false),
+                child: const Text("Cancel"),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                onPressed: () => Navigator.pop(dialogCtx, true),
+                child: const Text("Proceed anyway"),
+              ),
+            ],
+          ),
+        );
+
+        if (proceed != true) {
+          return;
+        }
+      }
+    }
+
     setState(() => _saving = true);
     const dayMapping = {
       "Mon": DateTime.monday,

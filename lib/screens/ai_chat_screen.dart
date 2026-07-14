@@ -212,6 +212,22 @@ class _AIChatScreenState
               ),
             ),
 
+            if (messages.length == 1)
+              Padding(
+                padding: const EdgeInsets.only(left: 24, bottom: 8),
+                child: SizedBox(
+                  height: 38,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      _suggestionChip("🌡️ Check Symptoms", "I would like to do an AI symptom check. I am feeling unwell."),
+                      _suggestionChip("🥗 Diet Tips", "Give me some personalized healthy diet recommendations."),
+                      _suggestionChip("❤️ Lower Blood Pressure", "What are some natural ways to lower high blood pressure?"),
+                    ],
+                  ),
+                ),
+              ),
+
             //////////////////////////////////////////////////////////////
             /// INPUT FIELD
             //////////////////////////////////////////////////////////////
@@ -393,6 +409,22 @@ class _AIChatScreenState
           Icons.arrow_back,
           color: AppColors.primary,
         ),
+      ),
+    );
+  }
+
+  Widget _suggestionChip(String label, String prompt) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ActionChip(
+        label: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
+        backgroundColor: Colors.white,
+        side: const BorderSide(color: AppColors.primary, width: 1),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        onPressed: () {
+          messageController.text = prompt;
+          sendMessage();
+        },
       ),
     );
   }
