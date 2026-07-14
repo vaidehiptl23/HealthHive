@@ -14,6 +14,7 @@ class DietPlannerScreen extends StatefulWidget {
 class _DietPlannerScreenState extends State<DietPlannerScreen> {
   String _dietPlan = "";
   bool _loading = true;
+  String _dietPreference = "Vegetarian";
 
   @override
   void initState() {
@@ -23,7 +24,7 @@ class _DietPlannerScreenState extends State<DietPlannerScreen> {
 
   Future<void> _loadDietPlan() async {
     setState(() => _loading = true);
-    final res = await ApiService.getDietPlan();
+    final res = await ApiService.getDietPlan(dietType: _dietPreference);
     if (mounted) {
       setState(() {
         _dietPlan = res['dietPlan'] ?? 'Could not compile a wellness plan.';
@@ -84,7 +85,19 @@ class _DietPlannerScreenState extends State<DietPlannerScreen> {
                 ],
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
+
+              // Diet Preference Selector
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _dietPreferenceChip("🥦 Veg", "Vegetarian"),
+                  _dietPreferenceChip("🍗 Non-Veg", "Non-Vegetarian"),
+                  _dietPreferenceChip("🌱 Vegan", "Vegan"),
+                ],
+              ),
+
+              const SizedBox(height: 20),
 
               Expanded(
                 child: _loading
@@ -177,6 +190,26 @@ class _DietPlannerScreenState extends State<DietPlannerScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _dietPreferenceChip(String label, String value) {
+    final isSelected = _dietPreference == value;
+    return ChoiceChip(
+      label: Text(label, style: TextStyle(color: isSelected ? Colors.white : Colors.black87, fontWeight: FontWeight.bold, fontSize: 13)),
+      selected: isSelected,
+      selectedColor: AppColors.primary,
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      side: BorderSide(color: isSelected ? AppColors.primary : Colors.black12),
+      onSelected: (bool selected) {
+        if (selected) {
+          setState(() {
+            _dietPreference = value;
+          });
+          _loadDietPlan();
+        }
+      },
     );
   }
 }
