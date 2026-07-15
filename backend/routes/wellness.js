@@ -7,6 +7,7 @@ const pool = require('../config/database');
 router.get('/diet-plan', auth, async (req, res) => {
   try {
     const dietType = req.query.dietType || 'Vegetarian';
+    const regenerate = req.query.regenerate === 'true';
 
     // 1. Fetch active medicines
     const [medRows] = await pool.query(
@@ -20,10 +21,6 @@ router.get('/diet-plan', auth, async (req, res) => {
       [req.userId]
     );
 
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(400).json({ success: false, message: 'Gemini API Key is not configured on the server.' });
-    }
-
     // Determine health profile clues
     const medsList = medRows.map(r => r.name).join(', ') || 'None registered';
     
@@ -33,7 +30,18 @@ router.get('/diet-plan', auth, async (req, res) => {
       if (avgSys >= 130) isHypertensive = true;
     }
 
-    console.log(`🔮 Generating personalized diet plan for user. Meds: ${medsList}, High BP: ${isHypertensive}, Diet Type: ${dietType}`);
+    // Fast-path: return local diet plan instantly if not explicitly regenerating
+    if (!regenerate) {
+      console.log(`⚡ Fast-path: Generating local personalized diet plan. Diet Type: ${dietType}`);
+      const dietPlan = getLocalDietPlan(dietType, isHypertensive, medRows);
+      return res.json({ success: true, dietPlan });
+    }
+
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(400).json({ success: false, message: 'Gemini API Key is not configured on the server.' });
+    }
+
+    console.log(`🔮 Generating personalized diet plan using Gemini. Meds: ${medsList}, High BP: ${isHypertensive}, Diet Type: ${dietType}`);
 
     const promptText = `You are a clinical nutritionist and registered dietitian AI. 
 Design a highly personalized 1-day sample Diet & Meal Plan for a patient with the following medical profile:
@@ -72,55 +80,7 @@ Format using clean Markdown.`;
     let dietPlan = '';
     if (!geminiRes.ok) {
       console.warn('⚠️ Gemini API returned error. Using locally generated high-quality fallback diet plan...');
-      
-      let breakfast = '';
-      let lunch = '';
-      let dinner = '';
-
-      if (dietType.toLowerCase() === 'vegan') {
-        breakfast = '* **Option:** Oatmeal cooked with almond milk, topped with sliced banana, a handful of blueberries, and 1 tablespoon of ground flaxseeds.\n* **Why:** High in soluble fiber to help regulate blood sugar and cholesterol, potassium-rich banana to support healthy blood pressure.';
-        lunch = '* **Option:** Grilled tofu salad with mixed greens, cherry tomatoes, cucumbers, grated carrots, and a light dressing of olive oil and lemon juice.\n* **Why:** Lean plant protein promotes satiety, while leafy greens provide magnesium and calcium essential for vascular health.';
-        dinner = '* **Option:** Lentil and vegetable curry served with steamed broccoli and half a cup of cooked quinoa.\n* **Why:** Rich in dietary fiber and essential plant nutrients which lower inflammation and improve heart health.';
-      } else if (dietType.toLowerCase() === 'vegetarian') {
-        breakfast = '* **Option:** Whole wheat avocado toast topped with low-fat cottage cheese (paneer) and microgreens.\n* **Why:** Healthy monounsaturated fats support heart health, and low-fat dairy provides protein and calcium.';
-        lunch = '* **Option:** Grilled paneer and chickpea salad with mixed salad greens, cucumbers, carrots, and a yogurt-lemon dressing.\n* **Why:** High in protein and fiber to regulate blood glucose absorption.';
-        dinner = '* **Option:** Tofu and vegetable stir-fry with steamed broccoli, bell peppers, and half a cup of cooked brown rice.\n* **Why:** High-quality soy protein and mineral-dense vegetables.';
-      } else {
-        // Non-Vegetarian
-        breakfast = '* **Option:** Two poached eggs with a slice of whole grain toast and sliced avocado.\n* **Why:** Lean protein and healthy fats provide steady morning energy without blood sugar spikes.';
-        lunch = '* **Option:** Grilled chicken breast salad with mixed greens, cherry tomatoes, cucumbers, grated carrots, and olive oil dressing.\n* **Why:** High protein and rich in potassium-dense fresh salad greens.';
-        dinner = '* **Option:** Baked salmon fillet served with steamed broccoli and half a cup of cooked quinoa.\n* **Why:** Rich in Omega-3 fatty acids which lower inflammation and improve heart health.';
-      }
-
-      dietPlan = `### 🥗 Your Personalized 1-Day Wellness & Diet Plan (${dietType})
-
-Here is a nutrition plan tailored to your health profile:
-* **Active Medications:** ${medsList}
-* **Blood Pressure Status:** ${isHypertensive ? 'Elevated/Hypertensive (DASH Diet guidelines applied)' : 'Normal'}
-* **Dietary Category:** ${dietType}
-
----
-
-#### 🍳 **Breakfast**
-${breakfast}
-
-#### 🥗 **Lunch**
-${lunch}
-
-#### 🍎 **Snacks**
-* **Option:** A small apple with a handful of unsalted almonds or walnuts.
-* **Why:** Healthy fats and fiber that prevent blood sugar spikes and support cardiovascular function.
-
-#### 🍲 **Dinner**
-${dinner}
-
-#### 💧 **Hydration & Wellness Tips**
-* **Hydration:** Aim for 8-10 glasses of pure water throughout the day. Limit caffeine and sugary beverages.
-* **Activity:** Pair this nutrition guide with 30 minutes of moderate aerobic exercise (like brisk walking) to improve overall circulation.
-
----
-> [!IMPORTANT]
-> **Medical Disclaimer:** This diet plan is AI-generated for informational guidance only. Please discuss with your dietitian or physician before making significant dietary modifications.`;
+      dietPlan = getLocalDietPlan(dietType, isHypertensive, medRows);
     } else {
       const geminiData = await geminiRes.json();
       dietPlan = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || 'Could not compile a wellness plan.';
@@ -133,5 +93,72 @@ ${dinner}
     res.status(500).json({ success: false, message: 'Server error compiling diet plan.' });
   }
 });
+
+// Helper for local diet compiler
+function getLocalDietPlan(dietType, isHypertensive, medRows) {
+  const medsList = medRows.map(r => r.name);
+  const hasDiabetesMeds = medsList.some(name => {
+    const lower = name.toLowerCase();
+    return lower.includes('metformin') || lower.includes('insulin') || lower.includes('glipizide') || lower.includes('gliclazide') || lower.includes('diab');
+  });
+
+  let sodiumNote = isHypertensive ? " (Prepare with no added salt / low-sodium substitute)" : "";
+  let carbNote = hasDiabetesMeds ? " (Diabetic-friendly: low glycemic index, sugar-free)" : "";
+
+  let breakfast = "";
+  let lunch = "";
+  let dinner = "";
+  let snacks = "";
+
+  const type = dietType.toLowerCase();
+
+  if (type === 'vegan') {
+    breakfast = `* **Option:** Oatmeal cooked with almond milk, topped with sliced banana, a handful of blueberries, and 1 tablespoon of ground flaxseeds.${carbNote}\n* **Why:** 100% plant-based, rich in soluble fiber to help regulate blood sugar and cholesterol, potassium-rich banana to support healthy blood pressure.`;
+    lunch = `* **Option:** Grilled tofu salad with mixed greens, cherry tomatoes, cucumbers, grated carrots, and a light dressing of olive oil and lemon juice.${sodiumNote}\n* **Why:** Clean plant-based protein promotes satiety, while leafy greens provide magnesium and calcium essential for vascular health.`;
+    snacks = `* **Option:** Fresh cucumber slices and baby carrots with 2 tablespoons of organic hummus.\n* **Why:** Natural, low-calorie, zero cholesterol snack.`;
+    dinner = `* **Option:** Lentil and vegetable brown soup served with steamed broccoli and half a cup of cooked quinoa.${sodiumNote}${carbNote}\n* **Why:** Rich in dietary fiber and essential plant nutrients which lower inflammation and improve heart health.`;
+  } else if (type === 'vegetarian' || type === 'veg') {
+    breakfast = `* **Option:** Whole wheat avocado toast topped with low-fat cottage cheese (paneer) and microgreens.${carbNote}\n* **Why:** Healthy monounsaturated fats support heart health, and low-fat dairy provides protein and calcium.`;
+    lunch = `* **Option:** Grilled paneer and chickpea salad with mixed salad greens, cucumbers, carrots, and a light yogurt-lemon dressing.${sodiumNote}\n* **Why:** High in protein and fiber to regulate blood glucose absorption and keep you full.`;
+    snacks = `* **Option:** A cup of low-fat unsweetened Greek yogurt with a handful of raw walnuts.\n* **Why:** High in probiotics and heart-healthy Omega-3 fatty acids.`;
+    dinner = `* **Option:** Tofu and vegetable stir-fry with steamed broccoli, bell peppers, and half a cup of cooked brown rice.${sodiumNote}${carbNote}\n* **Why:** High-quality soy protein and mineral-dense vegetables.`;
+  } else {
+    // Non-Vegetarian
+    breakfast = `* **Option:** Two poached eggs with a slice of whole grain toast and sliced avocado.${carbNote}\n* **Why:** Lean protein and healthy fats provide steady morning energy without blood sugar spikes.`;
+    lunch = `* **Option:** Grilled chicken breast salad with mixed greens, cherry tomatoes, cucumbers, grated carrots, and olive oil dressing.${sodiumNote}\n* **Why:** High-quality lean poultry protein and potassium-dense fresh salad greens.`;
+    snacks = `* **Option:** A small apple with a handful of unsalted almonds.\n* **Why:** High fiber and healthy fats that prevent blood sugar spikes.`;
+    dinner = `* **Option:** Baked salmon fillet served with steamed broccoli and half a cup of cooked quinoa.${sodiumNote}${carbNote}\n* **Why:** Rich in Omega-3 fatty acids which lower inflammation and improve heart health.`;
+  }
+
+  const medsText = medsList.join(', ') || 'None registered';
+  return `### 🥗 Your Personalized 1-Day Wellness & Diet Plan (${dietType})
+
+Here is a nutrition plan tailored to your health profile:
+* **Active Medications:** ${medsText}
+* **Blood Pressure Status:** ${isHypertensive ? 'Elevated/Hypertensive (DASH Diet guidelines applied)' : 'Normal'}
+* **Dietary Category:** ${dietType}
+
+---
+
+#### 🍳 **Breakfast**
+${breakfast}
+
+#### 🥗 **Lunch**
+${lunch}
+
+#### 🍎 **Snacks**
+${snacks}
+
+#### 🍲 **Dinner**
+${dinner}
+
+#### 💧 **Hydration & Wellness Tips**
+* **Hydration:** Aim for 8-10 glasses of pure water throughout the day. Limit caffeine and sugary beverages.
+* **Activity:** Pair this nutrition guide with 30 minutes of moderate aerobic exercise (like brisk walking) to improve overall circulation.
+
+---
+> [!IMPORTANT]
+> **Medical Disclaimer:** This diet plan is AI-generated for informational guidance only. Please discuss with your dietitian or physician before making significant dietary modifications.`;
+}
 
 module.exports = router;

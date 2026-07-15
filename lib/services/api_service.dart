@@ -187,9 +187,9 @@ class ApiService {
     return {'success': false, 'message': 'Connection error occurred.'};
   }
 
-  static Future<Map<String, dynamic>> getDietPlan({String? dietType}) async {
+  static Future<Map<String, dynamic>> getDietPlan({String? dietType, bool regenerate = false}) async {
     try {
-      final queryParam = dietType != null ? '?dietType=$dietType' : '';
+      final queryParam = '?dietType=${dietType ?? 'Vegetarian'}&regenerate=$regenerate';
       final res = await http.get(
         Uri.parse('$_baseUrl/wellness/diet-plan$queryParam'),
         headers: await _headers(),

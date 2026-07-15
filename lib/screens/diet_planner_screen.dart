@@ -22,9 +22,9 @@ class _DietPlannerScreenState extends State<DietPlannerScreen> {
     _loadDietPlan();
   }
 
-  Future<void> _loadDietPlan() async {
+  Future<void> _loadDietPlan({bool regenerate = false}) async {
     setState(() => _loading = true);
-    final res = await ApiService.getDietPlan(dietType: _dietPreference);
+    final res = await ApiService.getDietPlan(dietType: _dietPreference, regenerate: regenerate);
     if (mounted) {
       setState(() {
         _dietPlan = res['dietPlan'] ?? 'Could not compile a wellness plan.';
@@ -39,7 +39,7 @@ class _DietPlannerScreenState extends State<DietPlannerScreen> {
       backgroundColor: AppColors.background,
       bottomNavigationBar: CustomBottomNav(currentIndex: 0, userEmail: widget.userEmail),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _loadDietPlan,
+        onPressed: () => _loadDietPlan(regenerate: true),
         backgroundColor: AppColors.primary,
         icon: const Icon(Icons.refresh, color: Colors.white),
         label: const Text("Regenerate", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
