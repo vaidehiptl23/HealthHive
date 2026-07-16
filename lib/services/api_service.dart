@@ -171,21 +171,7 @@ class ApiService {
     return {'success': false, 'trends': 'Failed to retrieve vitals trends.'};
   }
 
-  static Future<Map<String, dynamic>> logVitalsByVoice(String phrase) async {
-    try {
-      final res = await http.post(
-        Uri.parse('$_baseUrl/vitals/voice-log'),
-        headers: await _headers(),
-        body: jsonEncode({'text': phrase}),
-      );
-      if (res.statusCode == 200 || res.statusCode == 400) {
-        return jsonDecode(res.body);
-      }
-    } catch (e) {
-      if (kDebugMode) debugPrint('logVitalsByVoice error: $e');
-    }
-    return {'success': false, 'message': 'Connection error occurred.'};
-  }
+
 
   static Future<Map<String, dynamic>> getDietPlan({String? dietType, bool regenerate = false}) async {
     try {
@@ -512,6 +498,19 @@ class ApiService {
       }
     } catch (_) {}
     return [];
+  }
+
+  static Future<Map<String, dynamic>> getFamilyMembersResponse() async {
+    try {
+      final res = await http.get(
+        Uri.parse('$_baseUrl/family'),
+        headers: await _headers(),
+      );
+      if (res.statusCode == 200) {
+        return jsonDecode(res.body);
+      }
+    } catch (_) {}
+    return {'success': false, 'data': [], 'subscriptionPlan': 'free'};
   }
 
   static Future<Map<String, dynamic>> addFamilyMember(Map<String, dynamic> data) async {

@@ -10,7 +10,9 @@ router.get('/', auth, async (req, res) => {
       `SELECT * FROM family_members WHERE user_id = ? ORDER BY created_at DESC`,
       [req.userId]
     );
-    res.json({ success: true, data: rows });
+    const [userRows] = await pool.query('SELECT subscription_plan FROM users WHERE id = ?', [req.userId]);
+    const plan = userRows[0]?.subscription_plan || 'free';
+    res.json({ success: true, data: rows, subscriptionPlan: plan });
   } catch (err) {
     console.error('Get family error:', err);
     res.status(500).json({ success: false, message: 'Server error' });

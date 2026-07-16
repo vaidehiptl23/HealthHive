@@ -5,6 +5,7 @@ import '../services/api_service.dart';
 import 'recently_uploaded_docs.dart';
 import 'add_member.dart';
 import 'profile_screen.dart';
+import 'subscription_screen.dart';
 
 class AddFamilyMemberScreen extends StatefulWidget {
   final String userEmail;
@@ -21,6 +22,7 @@ class AddFamilyMemberScreen extends StatefulWidget {
 class _AddFamilyMemberScreenState extends State<AddFamilyMemberScreen> {
   List<Map<String, dynamic>> _members = [];
   bool _isLoading = true;
+  String _subscriptionPlan = 'free';
 
   @override
   void initState() {
@@ -29,8 +31,14 @@ class _AddFamilyMemberScreenState extends State<AddFamilyMemberScreen> {
   }
 
   void _loadMembers() async {
-    final members = await ApiService.getFamilyMembers();
-    if (mounted) setState(() { _members = members; _isLoading = false; });
+    final res = await ApiService.getFamilyMembersResponse();
+    if (mounted) {
+      setState(() {
+        _members = List<Map<String, dynamic>>.from(res['data'] ?? []);
+        _subscriptionPlan = res['subscriptionPlan'] ?? 'free';
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -99,6 +107,30 @@ class _AddFamilyMemberScreenState extends State<AddFamilyMemberScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
+                    int limit = 1;
+                    if (_subscriptionPlan == 'plus') limit = 5;
+                    if (_subscriptionPlan == 'premium') limit = 999;
+
+                    if (_members.length >= limit) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => SubscriptionScreen(
+                            onUpgradeSuccess: () {
+                              _loadMembers();
+                            },
+                          ),
+                        ),
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Plan limit reached. Upgrade to add more family members."),
+                          backgroundColor: Colors.orange,
+                        ),
+                      );
+                      return;
+                    }
+
                     Navigator.push(
                       context,
                       MaterialPageRoute(
