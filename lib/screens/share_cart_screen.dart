@@ -61,20 +61,36 @@ class _ShareCartScreenState extends State<ShareCartScreen> {
               final response = await http.get(Uri.parse(url));
               if (response.statusCode == 200) {
                 final mimeType = doc['mime_type'] as String? ?? 'application/octet-stream';
-                final fileExt = url.split('.').last.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
-                String ext = (fileExt.isNotEmpty && fileExt.length <= 4) ? fileExt : 'pdf';
-                if (ext == 'pdf' && mimeType.startsWith('image/')) {
-                  ext = mimeType == 'image/png' ? 'png' : 'jpg';
-                }
-                final safeName = name.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_');
                 
-                final tempFile = File('${tempDir.path}/share_doc_${counter}_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(10000)}.$ext');
+                // Determine file extension accurately from mimeType
+                String ext = 'pdf';
+                if (mimeType == 'application/pdf') {
+                  ext = 'pdf';
+                } else if (mimeType == 'image/png') {
+                  ext = 'png';
+                } else if (mimeType == 'image/jpeg' || mimeType == 'image/jpg') {
+                  ext = 'jpg';
+                } else {
+                  // Fallback: parse extension from URL
+                  final cleanUrl = url.split('?').first;
+                  final fileExt = cleanUrl.split('.').last.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+                  if (fileExt.isNotEmpty && fileExt.length <= 4) {
+                    ext = fileExt;
+                  }
+                }
+
+                final safeName = name.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_');
+                // Use the document name directly in the file path so the receiver gets the proper name
+                final fileName = counter == 0 ? '$safeName.$ext' : '${safeName}_$counter.$ext';
+                final tempFile = File('${tempDir.path}/$fileName');
                 counter++;
+                
                 await tempFile.writeAsBytes(response.bodyBytes);
                 
                 xFiles.add(XFile(
                   tempFile.path, 
-                  name: '$safeName.$ext',
+                  name: fileName,
+                  mimeType: mimeType,
                 ));
               } else {
                 debugMsg = "Code ${response.statusCode}";
@@ -86,6 +102,7 @@ class _ShareCartScreenState extends State<ShareCartScreen> {
         }
 
         if (xFiles.isNotEmpty) {
+          // Share all documents together using the native sharing sheet
           await Share.shareXFiles(xFiles, text: 'Here are my health documents.');
           setState(() { _cartService.clearCart(); });
         } else {
