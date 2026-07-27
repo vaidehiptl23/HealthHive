@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:http/http.dart' as http;
+import 'package:archive/archive_io.dart';
 import '../utils/colors.dart';
 import '../services/cart_service.dart';
 import '../services/api_service.dart';
@@ -30,6 +31,127 @@ class _ShareCartScreenState extends State<ShareCartScreen> {
   Future<void> _shareDocuments() async {
     if (_cartService.cart.isEmpty) return;
 
+    // Check if there is a mix of PDFs and images in the cart
+    bool hasPdf = false;
+    bool hasImage = false;
+    for (var doc in _cartService.cart) {
+      final mime = (doc['mime_type'] as String? ?? '').toLowerCase();
+      if (mime.contains('pdf')) hasPdf = true;
+      if (mime.contains('image/') || mime.contains('jpg') || mime.contains('png') || mime.contains('jpeg')) {
+        hasImage = true;
+      }
+    }
+
+    if (hasPdf && hasImage && !kIsWeb) {
+      // Prompt user with a choice to zip or share directly
+      final choice = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Share Options'),
+          content: const Text(
+            'You are sharing a mix of PDFs and images. Third-party apps like WhatsApp do not support sending mixed file types directly.\n\nWould you like to bundle them as a single folder (.zip) for WhatsApp, or try sending them separately?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'separate'),
+              child: const Text('Send Separately'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, 'zip'),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              child: const Text('Send Zipped (.zip)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+
+      if (choice == null) return;
+      if (choice == 'zip') {
+        _shareAsZip();
+        return;
+      }
+    }
+
+    _shareDirect();
+  }
+
+  Future<void> _shareAsZip() async {
+    setState(() {
+      _isSharing = true;
+    });
+
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final encoder = ZipFileEncoder();
+      final zipPath = '${tempDir.path}/healthhive_documents_${DateTime.now().millisecondsSinceEpoch}.zip';
+      encoder.create(zipPath);
+
+      int counter = 0;
+      for (var doc in _cartService.cart) {
+        final url = ApiService.resolveDocUrl(doc['file_url'] as String?);
+        final name = doc['name'] as String? ?? 'Document';
+        if (url.isNotEmpty) {
+          final response = await http.get(Uri.parse(url));
+          if (response.statusCode == 200) {
+            final mimeType = doc['mime_type'] as String? ?? 'application/octet-stream';
+            String ext = 'pdf';
+            if (mimeType == 'application/pdf') {
+              ext = 'pdf';
+            } else if (mimeType == 'image/png') {
+              ext = 'png';
+            } else if (mimeType == 'image/jpeg' || mimeType == 'image/jpg') {
+              ext = 'jpg';
+            } else {
+              final cleanUrl = url.split('?').first;
+              final fileExt = cleanUrl.split('.').last.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toLowerCase();
+              if (fileExt.isNotEmpty && fileExt.length <= 4) {
+                ext = fileExt;
+              }
+            }
+            final safeName = name.replaceAll(RegExp(r'[/\\?%*:|"<>]'), '_');
+            final fileName = counter == 0 ? '$safeName.$ext' : '${safeName}_$counter.$ext';
+            counter++;
+
+            final tempFile = File('${tempDir.path}/$fileName');
+            await tempFile.writeAsBytes(response.bodyBytes);
+            
+            encoder.addFile(tempFile);
+          }
+        }
+      }
+
+      encoder.close();
+
+      final zipFile = File(zipPath);
+      if (await zipFile.exists() && counter > 0) {
+        await Share.shareXFiles(
+          [XFile(zipPath, name: 'healthhive_documents.zip', mimeType: 'application/zip')],
+          text: 'Here are my health documents.',
+        );
+        setState(() { _cartService.clearCart(); });
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to package documents'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error creating zip: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSharing = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _shareDirect() async {
     setState(() {
       _isSharing = true;
     });
